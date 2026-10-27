@@ -76,7 +76,6 @@
 }
 
 .docs-main {
-  max-width: 56rem;
   margin-left: var(--docs-sidebar-width);
   padding: var(--bx-spacing-xl) var(--bx-spacing-xl) 4rem;
 }
