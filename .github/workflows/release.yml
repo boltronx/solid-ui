@@ -66,7 +66,7 @@ jobs:
     name: Checks
     needs: plan
     if: needs.plan.outputs.release == 'true'
-    uses: ./.github/workflows/ci.yml
+    uses: $/.github/workflows/ci.yml
     permissions:
       contents: read
 
