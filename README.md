@@ -1,0 +1,129 @@
+<p>
+  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-ui&background=tiles&project=%20" alt="Solid UI">
+</p>
+
+# @boltronx/solid-ui
+
+[![CI](https://github.com/boltronx/solid-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/boltronx/solid-ui/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fboltronx.github.io%2Fsolid-ui%2Fcoverage-badge.json)](https://github.com/boltronx/solid-ui/actions/workflows/pages.yml)
+[![npm](https://img.shields.io/npm/v/@boltronx/solid-ui)](https://www.npmjs.com/package/@boltronx/solid-ui)
+[![Docs](https://github.com/boltronx/solid-ui/actions/workflows/pages.yml/badge.svg)](https://boltronx.github.io/solid-ui/)
+[![Tree-shakeable](https://img.shields.io/badge/tree--shakeable-yes-brightgreen)](https://github.com/boltronx/solid-ui/blob/main/packages/solid-ui/test/treeshake.test.ts)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/boltronx/solid-ui/badge)](https://scorecard.dev/viewer/?uri=github.com/boltronx/solid-ui)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/boltronx/solid-ui/blob/main/LICENSE)
+
+Simple, themeable [SolidJS](https://www.solidjs.com/) components that work with plain HTML forms.
+
+**[Documentation and live examples →](https://boltronx.github.io/solid-ui/)**
+
+- **Plain forms.** Every input submits through `FormData`, resets with `form.reset()` and validates
+  with `required`. There is no form library to learn.
+- **Styles that stay out of your way.** Components only style their own `bx-` classes, inside a CSS
+  layer, so your CSS always wins without `!important`.
+- **Theming with CSS variables.** Change `--bx-primary` and every component follows. Light and dark
+  modes come built in.
+
+## Install
+
+```sh
+npm install @boltronx/solid-ui
+# or: pnpm add @boltronx/solid-ui
+```
+
+`solid-js` 1.9 or later is a peer dependency.
+
+## Setup
+
+**1. Import the styles once**, in your entry file:
+
+```ts
+import "@boltronx/solid-ui/styles.css";
+```
+
+`styles.css` also sets page defaults (body font, background, `box-sizing`). If your app has its own,
+import `@boltronx/solid-ui/components.css` instead; it styles the components only.
+
+**2. Avoid a flash of the wrong color scheme** (optional). With Vite, add the plugin:
+
+```ts
+// vite.config.ts
+import { colorScheme } from "@boltronx/solid-ui/vite";
+import solid from "vite-plugin-solid";
+import { defineConfig } from "vite";
+
+export default defineConfig({ plugins: [solid(), colorScheme()] });
+```
+
+Without Vite, put the output of `colorSchemeScript()` in a `<script>` at the top of `<head>`. The
+page follows the OS setting even without it; the script only matters once a user picks a mode.
+
+**3. Use the components:**
+
+```tsx
+import { Button, Input, Stack } from "@boltronx/solid-ui";
+
+export function Login() {
+  const onSubmit = (event: SubmitEvent) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    console.log(data.get("email"));
+  };
+
+  return (
+    <form onSubmit={onSubmit}>
+      <Stack>
+        <Input label="Email" name="email" type="email" required />
+        <Button type="submit" variant="primary">
+          Sign in
+        </Button>
+      </Stack>
+    </form>
+  );
+}
+```
+
+## Forms
+
+Each input works as uncontrolled or controlled:
+
+- **Uncontrolled**: pass `defaultValue` (or `defaultChecked`). The browser holds the value, and
+  `form.reset()` restores the default.
+- **Controlled**: pass `value` (or `checked`) and update it from `onChange`. The value belongs to
+  you, so a form reset leaves it alone.
+
+Composite inputs submit like native ones. `Select` adds one entry per picked value
+(`formData.getAll("tags")`), and `InputNumber` submits the plain number (`1234.5`) even while it
+shows `1,234.50`.
+
+## Theming
+
+Override any token from your own CSS. Colors take `light-dark(light, dark)`:
+
+```css
+:root {
+  --bx-primary: light-dark(#dc2626, #b61d1d);
+  --bx-radius-sm: 4px;
+}
+```
+
+Switch modes with `useColorScheme()`:
+
+```tsx
+const { scheme, setMode } = useColorScheme();
+<Button onClick={() => setMode(scheme() === "dark" ? "light" : "dark")}>Toggle</Button>;
+```
+
+The [theming guide](https://boltronx.github.io/solid-ui/#/theming) lists every token.
+
+## Browser support
+
+The styles use `light-dark()`, CSS nesting and `color-mix()`, so they need Chrome/Edge 123, Firefox
+120 or Safari 17.5 and later.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). To report a security issue, see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](https://github.com/boltronx/solid-ui/blob/main/LICENSE)

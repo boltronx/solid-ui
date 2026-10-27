@@ -1,0 +1,32 @@
+export const meta = {
+  title: "Icons and loading",
+  description: "loading keeps the button's size and blocks clicks."
+};
+
+import { createSignal } from "solid-js";
+
+import { Button, Group, Stack } from "@boltronx/solid-ui";
+import { DownloadIcon, PlusIcon } from "@boltronx/solid-ui/icons";
+
+export default function Demo() {
+  const [saving, setSaving] = createSignal(false);
+  const save = () => {
+    setSaving(true);
+    setTimeout(() => setSaving(false), 1500);
+  };
+
+  return (
+    <Stack>
+      <Group wrap>
+        <Button leftSection={<PlusIcon />}>New item</Button>
+        <Button rightSection={<DownloadIcon />}>Export</Button>
+        <Button variant="primary" loading={saving()} onClick={save}>
+          {saving() ? "Saving" : "Save"}
+        </Button>
+      </Group>
+      <Button variant="light" fullWidth>
+        Full width
+      </Button>
+    </Stack>
+  );
+}

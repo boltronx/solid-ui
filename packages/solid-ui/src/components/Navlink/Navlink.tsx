@@ -1,0 +1,110 @@
+import type { JSX, ValidComponent } from "solid-js";
+import { children as resolveChildren, createEffect, createSignal, Show } from "solid-js";
+import { Dynamic } from "solid-js/web";
+
+import { type BaseProps, cx } from "../../utils/style";
+
+export interface NavlinkProps extends BaseProps {
+  /** Element or component to render, e.g. a router's `A`. Default "a" with `href`, else "div". */
+  component?: ValidComponent;
+  href?: string;
+  label: JSX.Element;
+  /** Nested links, shown in a collapsible group. */
+  children?: JSX.Element;
+  active?: boolean;
+  disabled?: boolean;
+  /** Controls whether the nested group is open. */
+  opened?: boolean;
+  leftSection?: JSX.Element;
+  rightSection?: JSX.Element;
+  /** Indent of nested links, in px. */
+  childrenOffset?: number;
+  target?: string;
+  rel?: string;
+  onClick?: (event: MouseEvent) => void;
+}
+
+const ChevronRight = () => (
+  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" class="bx-Navlink-chevronIcon">
+    <path
+      d="M6 12L10 8L6 4"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+);
+
+export function Navlink(props: NavlinkProps) {
+  const resolved = resolveChildren(() => props.children);
+  const hasChildren = () => {
+    const c = resolved();
+    return Array.isArray(c) ? c.length > 0 : !!c;
+  };
+  const isDiv = () => !props.href && (!props.component || props.component === "div");
+  const [opened, setOpened] = createSignal(false);
+
+  createEffect(() => {
+    if (props.opened !== undefined) setOpened(props.opened);
+  });
+
+  const activate = (event: MouseEvent) => {
+    if (props.disabled) return;
+    if (hasChildren() && props.opened === undefined) setOpened(o => !o);
+    props.onClick?.(event);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if ((event.key === "Enter" || event.key === " ") && isDiv() && !props.disabled) {
+      event.preventDefault();
+      (event.currentTarget as HTMLElement).click();
+    }
+  };
+
+  return (
+    <div class="bx-Navlink-root">
+      <Dynamic
+        component={props.component ?? (props.href ? "a" : "div")}
+        class={cx("bx-Navlink", props.class)}
+        style={props.style}
+        data-active={props.active ? "" : undefined}
+        data-disabled={props.disabled ? "" : undefined}
+        data-opened={hasChildren() && opened() ? "" : undefined}
+        href={props.href}
+        target={props.target}
+        rel={props.rel}
+        onClick={activate}
+        onKeyDown={isDiv() ? handleKeyDown : undefined}
+        aria-disabled={props.disabled || undefined}
+        aria-current={props.active && props.href ? "page" : undefined}
+        aria-expanded={hasChildren() ? opened() : undefined}
+        role={isDiv() ? "button" : undefined}
+        tabIndex={isDiv() && !props.disabled ? 0 : undefined}
+      >
+        {props.leftSection ? <span class="bx-Navlink-section">{props.leftSection}</span> : null}
+        <span class="bx-Navlink-label">{props.label}</span>
+        <Show when={hasChildren()} fallback={props.rightSection}>
+          <span class="bx-Navlink-section bx-Navlink-chevron">
+            <ChevronRight />
+          </span>
+        </Show>
+      </Dynamic>
+
+      <Show when={hasChildren()}>
+        <div class="bx-Navlink-collapse" data-opened={opened() ? "" : undefined} inert={!opened()}>
+          <div
+            class="bx-Navlink-children"
+            style={
+              props.childrenOffset !== undefined
+                ? { "padding-left": `${props.childrenOffset}px` }
+                : undefined
+            }
+          >
+            {resolved()}
+          </div>
+        </div>
+      </Show>
+    </div>
+  );
+}

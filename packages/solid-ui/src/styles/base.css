@@ -1,0 +1,20 @@
+/* Rules the components rely on. Shipped in both styles.css and components.css. */
+
+/* Only library elements, so an app that uses content-box keeps it. */
+:where([class^="bx-"], [class*=" bx-"]),
+:where([class^="bx-"], [class*=" bx-"])::before,
+:where([class^="bx-"], [class*=" bx-"])::after {
+  box-sizing: border-box;
+}
+
+/* Set on <html> while a modal is open */
+.bx-scroll-locked {
+  overflow: hidden;
+}
+
+/* Set on <html> for one frame while the color scheme changes, so colors swap without animating */
+.bx-theme-switching *,
+.bx-theme-switching *::before,
+.bx-theme-switching *::after {
+  transition: none !important;
+}

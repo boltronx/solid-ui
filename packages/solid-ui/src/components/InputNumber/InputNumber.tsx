@@ -1,0 +1,257 @@
+import type { JSX } from "solid-js";
+import { createSignal, onCleanup, splitProps } from "solid-js";
+
+import { createControllableSignal, onFormReset } from "../../utils/form";
+import { Input, type InputProps } from "../Input/Input";
+import { useReadOnly } from "../ReadOnly/ReadOnly";
+
+export type DecimalConfig = number | { min?: number; max?: number };
+
+export interface InputNumberProps extends Omit<
+  InputProps,
+  | "type"
+  | "leftSection"
+  | "inputMode"
+  | "value"
+  | "defaultValue"
+  | "maxLength"
+  | "minLength"
+  | "onChange"
+  | "onInput"
+> {
+  /** Controlled value; `null` is a controlled empty field. */
+  value?: number | null;
+  /** Uncontrolled starting value; a form reset restores it. */
+  defaultValue?: number | null;
+  /** Fraction digits: a fixed count, or a range. Default 0–5, or 2–3 with `currency`. */
+  decimals?: DecimalConfig;
+  /** ISO 4217 code, e.g. "PHP" or "USD". Shows the currency symbol before the value. */
+  currency?: string;
+  /** Delay before `onInput` reports a value while typing. Default 400ms. */
+  onInputDebounceMs?: number;
+  /** Called while typing (debounced) and on blur. */
+  onInput?: (value: number | null) => void;
+  /** Called on blur with the parsed, clamped and rounded value. */
+  onChange?: (value: number | null) => void;
+}
+
+const formatterCache = /* @__PURE__ */ new Map<string, Intl.NumberFormat>();
+
+// Strips float noise (e.g. 1392.1874999999998 -> 1392.1875) so values behave like exact decimals.
+function stripFloatNoise(value: number): number {
+  return Number(value.toPrecision(15));
+}
+
+function normalizeDecimals(value: number | undefined): number {
+  const n = value ?? 0;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+}
+
+function resolveDecimals(
+  decimals: DecimalConfig | undefined,
+  fallback = { min: 0, max: 5 }
+): { min: number; max: number } {
+  if (typeof decimals === "number") {
+    const n = normalizeDecimals(decimals);
+    return { min: n, max: n };
+  }
+  const min = normalizeDecimals(decimals?.min ?? fallback.min);
+  const max = normalizeDecimals(decimals?.max ?? fallback.max);
+  return max < min ? { min, max: min } : { min, max };
+}
+
+/**
+ * Rounds half away from zero on the decimal value, matching PostgreSQL numeric round(value, decimals).
+ * e.g. roundNumber(1559.25 / 1.12, 3) === 1392.188
+ */
+export function roundNumber(value: number, decimals: number): number {
+  if (!Number.isFinite(value)) return value;
+  const factor = 10 ** normalizeDecimals(decimals);
+  const clean = stripFloatNoise(value);
+  const rounded = Math.round(stripFloatNoise(Math.abs(clean) * factor)) / factor;
+  return clean < 0 ? -rounded : rounded;
+}
+
+/** Formats with grouping, e.g. formatNumber(1234.5, 2) === "1,234.50". */
+export function formatNumber(value: number | null | undefined, decimals?: DecimalConfig): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "";
+  const resolved = resolveDecimals(decimals);
+  const cacheKey = `${resolved.min}:${resolved.max}`;
+  let formatter = formatterCache.get(cacheKey);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: resolved.min,
+      maximumFractionDigits: resolved.max
+    });
+    formatterCache.set(cacheKey, formatter);
+  }
+  // Intl rounds half away from zero, like PostgreSQL numeric round(), once float noise is gone.
+  return formatter.format(stripFloatNoise(value));
+}
+
+/** Parses a typed or formatted number ("1,234.5"); empty or invalid text is null. */
+export function parseNumber(text: string): number | null {
+  const cleaned = text.replace(/,/g, "").trim();
+  if (cleaned === "" || cleaned === "-") return null;
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isWithinSafePrecision(text: string, maxDecimals: number): boolean {
+  const cleaned = text.replace(/,/g, "").trim();
+  if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return true;
+  if (!/^-?\d*(\.\d*)?$/.test(cleaned)) return false;
+  const fraction = cleaned.split(".")[1];
+  if (fraction && fraction.length > maxDecimals) return false;
+  const digits = cleaned.replace(/[-.]/g, "").replace(/^0+/, "");
+  return digits.length <= 15;
+}
+
+function resolveLimit(limit: string | number | undefined): number | undefined {
+  if (limit === undefined) return undefined;
+  const parsed = typeof limit === "number" ? limit : parseFloat(limit);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+function currencySymbol(currency: string): string {
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol"
+    }).formatToParts(0);
+    return parts.find(part => part.type === "currency")?.value ?? currency;
+  } catch {
+    return currency;
+  }
+}
+
+/**
+ * A number field that shows grouped digits ("1,234.50") but submits the plain number ("1234.5")
+ * through a hidden input named `name`.
+ */
+export function InputNumber(props: InputNumberProps) {
+  const [local, inputProps] = splitProps(props, [
+    "name",
+    "decimals",
+    "currency",
+    "value",
+    "defaultValue",
+    "onInput",
+    "onInputDebounceMs",
+    "onChange",
+    "onFocus",
+    "onBlur",
+    "readOnly",
+    "min",
+    "max",
+    "ref",
+    "inputClass"
+  ]);
+
+  const decimalConfig = () =>
+    resolveDecimals(local.decimals, local.currency ? { min: 2, max: 3 } : undefined);
+  const maxDecimals = () => decimalConfig().max;
+  const clamp = (n: number | null) => {
+    if (n === null) return null;
+    const min = resolveLimit(local.min);
+    const max = resolveLimit(local.max);
+    if (min !== undefined && n < min) return min;
+    if (max !== undefined && n > max) return max;
+    return n;
+  };
+  const round = (n: number | null) => (n === null ? null : roundNumber(n, maxDecimals()));
+
+  const state = createControllableSignal<number | null>({
+    value: () => (local.value === undefined ? undefined : clamp(local.value)),
+    defaultValue: () => clamp(local.defaultValue ?? null)
+  });
+  const [focused, setFocused] = createSignal(false);
+  const [rawText, setRawText] = createSignal("");
+  const isReadOnly = useReadOnly(() => local.readOnly === true);
+  let input: HTMLInputElement | undefined;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  onCleanup(() => clearTimeout(debounceTimer));
+  onFormReset(() => input, state.reset);
+
+  const displayValue = () => (focused() ? rawText() : formatNumber(state.value(), decimalConfig()));
+  const submittedValue = () => {
+    const value = round(state.value());
+    return value === null ? "" : String(value);
+  };
+
+  const handleFocus: JSX.FocusEventHandler<HTMLInputElement, FocusEvent> = event => {
+    if (!isReadOnly()) {
+      const value = state.value();
+      setRawText(value === null ? "" : String(round(value)));
+      setFocused(true);
+      // currentTarget is null once dispatch ends, so keep the element for the microtask.
+      const element = event.currentTarget;
+      queueMicrotask(() => element.select());
+    }
+    if (typeof local.onFocus === "function") local.onFocus(event);
+  };
+
+  const handleBlur: JSX.FocusEventHandler<HTMLInputElement, FocusEvent> = event => {
+    if (focused()) {
+      clearTimeout(debounceTimer);
+      const value = round(clamp(parseNumber(rawText())));
+      state.setValue(value);
+      setFocused(false);
+      local.onInput?.(value);
+      local.onChange?.(value);
+    }
+    if (typeof local.onBlur === "function") local.onBlur(event);
+  };
+
+  const handleInput: JSX.EventHandler<HTMLInputElement, InputEvent> = event => {
+    const text = event.currentTarget.value;
+    if (!isWithinSafePrecision(text, maxDecimals())) {
+      event.currentTarget.value = rawText();
+      return;
+    }
+    setRawText(text);
+    if (!local.onInput) return;
+    clearTimeout(debounceTimer);
+    const value = clamp(parseNumber(text));
+    debounceTimer = setTimeout(
+      () => local.onInput?.(value),
+      Math.max(0, local.onInputDebounceMs ?? 400)
+    );
+  };
+
+  return (
+    <>
+      <Input
+        {...inputProps}
+        ref={element => {
+          input = element;
+          local.ref?.(element);
+        }}
+        inputClass={local.inputClass ? `bx-InputNumber ${local.inputClass}` : "bx-InputNumber"}
+        inputMode="decimal"
+        min={local.min}
+        max={local.max}
+        value={displayValue()}
+        leftSection={
+          local.currency ? (
+            <span class="bx-InputNumber-currency">{currencySymbol(local.currency)}</span>
+          ) : undefined
+        }
+        placeholder={inputProps.placeholder ?? (local.currency ? "0.00" : undefined)}
+        readOnly={isReadOnly()}
+        onInput={handleInput}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+      />
+      <input
+        type="hidden"
+        name={local.name}
+        value={submittedValue()}
+        disabled={inputProps.disabled}
+      />
+    </>
+  );
+}
