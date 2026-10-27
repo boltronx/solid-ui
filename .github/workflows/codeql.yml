@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Required checks must also run on merge queue branches, or queued PRs wait until they time out.
+  merge_group:
   schedule:
     # Weekly, to pick up newly added queries
     - cron: "27 4 * * 1"

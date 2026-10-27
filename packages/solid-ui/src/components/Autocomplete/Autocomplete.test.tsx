@@ -20,8 +20,10 @@ describe("Autocomplete", () => {
       <Autocomplete label="City" name="city" options={cities} onOptionSubmit={onOptionSubmit} />
     ));
     await userEvent.type(screen.getByLabelText("City"), "ce");
+    // The panel stays hidden until it is positioned on the next animation frame.
+    const cebu = await screen.findByRole("option", { name: "Cebu" });
     expect(screen.queryByRole("option", { name: "Manila" })).toBeNull();
-    await userEvent.click(screen.getByRole("option", { name: "Cebu" }));
+    await userEvent.click(cebu);
     expect(onOptionSubmit).toHaveBeenCalledWith(cities[1]);
     expect(data().get("city")).toBe("Cebu");
   });

@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [solid({ hot: false })],
   test: {
     environment: "jsdom",
+    // Reuses one jsdom per worker while keeping each test file isolated; about twice as fast.
+    pool: "vmThreads",
     setupFiles: ["./test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
     coverage: {

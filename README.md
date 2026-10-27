@@ -1,5 +1,5 @@
 <p>
-  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-ui&background=tiles&project=%20" alt="Solid UI">
+  <img width="100%" src="https://assets.solidjs.com/banner?background=tiles&project=solid-ui" alt="Solid UI">
 </p>
 
 # @boltronx/solid-ui
