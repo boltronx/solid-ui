@@ -6,6 +6,8 @@ export interface ProgressProps extends BaseProps {
   max?: number;
   /** Shown on the bar and used as its accessible name. */
   label?: string;
+  /** Accessible name for a bar without a visible label, e.g. "Upload progress". */
+  "aria-label"?: string;
   /** Bar color. Default the primary color. */
   color?: string;
   striped?: boolean;
@@ -29,7 +31,7 @@ export function Progress(props: ProgressProps) {
       aria-valuenow={props.value}
       aria-valuemin={0}
       aria-valuemax={max()}
-      aria-label={props.label}
+      aria-label={props.label ?? props["aria-label"]}
     >
       <div
         class="bx-Progress-bar"

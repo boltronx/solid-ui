@@ -16,4 +16,6 @@
   border-radius: var(--bx-radius-sm);
   box-shadow: var(--bx-shadow-md);
   cursor: default;
+  /* Scrolling past a dropdown's end doesn't move the page it is anchored to. */
+  overscroll-behavior: contain;
 }

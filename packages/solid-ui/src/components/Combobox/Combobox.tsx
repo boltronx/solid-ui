@@ -4,32 +4,40 @@ import { Show } from "solid-js";
 import { Loader } from "../Loader/Loader";
 import type { SelectOption } from "../Select/Select";
 
-/** Shows a loading or empty state in place of a dropdown's options. */
+/**
+ * A dropdown's loading or empty message. It stays mounted as a live region beside the listbox (a
+ * listbox may only hold options), so screen readers hear "No options found" as the user types.
+ */
 export function ComboboxState(props: {
   loading?: boolean;
   empty: boolean;
   nothingFoundMessage?: string;
-  children: JSX.Element;
+  /** Replaces the other states, e.g. "Type at least 3 characters". */
+  hint?: string;
 }) {
   return (
-    <Show
-      when={!props.loading}
-      fallback={
-        <div class="bx-Combobox-state">
-          <Loader size="xs" /> Loading...
-        </div>
-      }
-    >
-      <Show
-        when={!props.empty}
-        fallback={
-          <div class="bx-Combobox-state">{props.nothingFoundMessage ?? "No options found"}</div>
-        }
-      >
-        {props.children}
+    <div class="bx-Combobox-state" role="status">
+      <Show when={!props.hint} fallback={props.hint}>
+        <Show
+          when={props.loading}
+          fallback={
+            <Show when={props.empty}>{props.nothingFoundMessage ?? "No options found"}</Show>
+          }
+        >
+          {/* Hidden so the loader's own status does not repeat the text. */}
+          <span aria-hidden="true">
+            <Loader size="xs" />
+          </span>
+          Loading...
+        </Show>
       </Show>
-    </Show>
+    </div>
   );
+}
+
+/** The hint shown while a server search waits for more characters. */
+export function minLengthHint(minLength: number | undefined, message: string | undefined): string {
+  return message ?? `Type at least ${minLength} characters`;
 }
 
 export function ComboboxOptionContent(props: {

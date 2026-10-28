@@ -14,7 +14,7 @@ import {
   Text,
   useColorScheme
 } from "@boltronx/solid-ui";
-import { CloseIcon, DesktopIcon, MenuIcon, MoonIcon, SunIcon } from "@boltronx/solid-ui/icons";
+import { IconDeviceDesktop, IconMenu2, IconMoon, IconSun, IconX } from "@tabler/icons-solidjs";
 
 import { ComponentPage } from "./pages/ComponentPage";
 import { Forms } from "./pages/Forms";
@@ -32,9 +32,9 @@ const guides = [
 ];
 
 const schemeIcons: Record<ColorSchemeMode, () => JSX.Element> = {
-  light: () => <SunIcon />,
-  dark: () => <MoonIcon />,
-  system: () => <DesktopIcon />
+  light: () => <IconSun />,
+  dark: () => <IconMoon />,
+  system: () => <IconDeviceDesktop />
 };
 
 function ColorSchemeMenu() {
@@ -129,7 +129,7 @@ function Shell(props: RouteSectionProps) {
           aria-controls="docs-sidebar"
           onClick={() => setNavOpen(open => !open)}
         >
-          {navOpen() ? <CloseIcon /> : <MenuIcon />}
+          {navOpen() ? <IconX /> : <IconMenu2 />}
         </IconButton>
         <A href="/" class="docs-brand">
           <span class="docs-logo" aria-hidden="true" />
@@ -143,7 +143,11 @@ function Shell(props: RouteSectionProps) {
       </header>
       <div class="docs-overlay" onClick={() => setNavOpen(false)} />
       <aside id="docs-sidebar" class="docs-sidebar">
-        <ScrollArea class="docs-sidebar-scroll" viewportClass="docs-sidebar-viewport">
+        <ScrollArea
+          class="docs-sidebar-scroll"
+          viewportClass="docs-sidebar-viewport"
+          overscrollBehavior="contain"
+        >
           <Navigation onNavigate={() => setNavOpen(false)} />
         </ScrollArea>
       </aside>

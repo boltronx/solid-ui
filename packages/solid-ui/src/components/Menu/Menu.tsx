@@ -3,6 +3,7 @@ import {
   createContext,
   createEffect,
   createSignal,
+  createUniqueId,
   onCleanup,
   onMount,
   Show,
@@ -14,28 +15,64 @@ import { FloatingPanel, type FloatingPosition } from "../FloatingPanel/FloatingP
 
 export type MenuPosition = FloatingPosition;
 
+/** Which item gets focus when the menu opens. */
+type InitialFocus = "first" | "last";
+
 interface MenuContextValue {
   open: Accessor<boolean>;
   position: Accessor<MenuPosition>;
+  menuId: string;
   menuRef: Accessor<HTMLDivElement | undefined>;
   setDropdownRef: (element: HTMLDivElement | undefined) => void;
-  close: () => void;
+  trigger: Accessor<HTMLElement | undefined>;
+  setTrigger: (element: HTMLElement | undefined) => void;
+  openMenu: (focus: InitialFocus) => void;
+  /** Closes the menu; with `returnFocus`, focus goes back to the trigger. */
+  close: (returnFocus?: boolean) => void;
 }
 
 const MenuContext = createContext<MenuContextValue>();
+
+const ITEM = '[role^="menuitem"]:not([aria-disabled="true"])';
+
+function menuItems(dropdown: HTMLElement | undefined): HTMLElement[] {
+  return dropdown ? Array.from(dropdown.querySelectorAll<HTMLElement>(ITEM)) : [];
+}
 
 export interface MenuProps extends BaseProps {
   children?: JSX.Element;
   position?: MenuPosition;
 }
 
+/**
+ * A menu button: the target opens a list of actions. Follows the WAI-ARIA menu button pattern:
+ * opening moves focus into the menu, arrow keys, Home and End move between items, and Escape or
+ * picking an item closes it and returns focus to the target.
+ */
 function MenuRoot(props: MenuProps) {
   let menuRef: HTMLDivElement | undefined;
   let dropdownRef: HTMLDivElement | undefined;
   const [open, setOpen] = createSignal(false);
+  const [trigger, setTrigger] = createSignal<HTMLElement>();
+  const menuId = `bx-menu-${createUniqueId()}`;
+  let initialFocus: InitialFocus = "first";
   const position = () => props.position ?? "bottom";
 
-  const closeMenu = () => setOpen(false);
+  const closeMenu = (returnFocus = false) => {
+    setOpen(false);
+    if (returnFocus) trigger()?.focus();
+  };
+
+  const focusItem = (focus: InitialFocus) => {
+    const items = menuItems(dropdownRef);
+    (focus === "last" ? items.at(-1) : items[0])?.focus();
+  };
+
+  const openMenu = (focus: InitialFocus) => {
+    initialFocus = focus;
+    if (open()) focusItem(focus);
+    else setOpen(true);
+  };
 
   const closeOnOutsideClick = (event: MouseEvent) => {
     const target = event.target as Node;
@@ -47,7 +84,7 @@ function MenuRoot(props: MenuProps) {
     if (event.key !== "Escape" || event.defaultPrevented) return;
     // Handled here, so an open modal behind the menu stays open.
     event.preventDefault();
-    closeMenu();
+    closeMenu(true);
   };
 
   createEffect(() => {
@@ -63,10 +100,16 @@ function MenuRoot(props: MenuProps) {
   const context: MenuContextValue = {
     open,
     position,
+    menuId,
     menuRef: () => menuRef,
     setDropdownRef: element => {
       dropdownRef = element;
+      // The dropdown mounts once open: move focus into it, as a menu button does.
+      if (element) queueMicrotask(() => focusItem(initialFocus));
     },
+    trigger,
+    setTrigger,
+    openMenu,
     close: closeMenu
   };
 
@@ -79,7 +122,8 @@ function MenuRoot(props: MenuProps) {
         data-open={open() ? "" : undefined}
         onClick={event => {
           event.stopPropagation();
-          setOpen(current => !current);
+          if (open()) closeMenu();
+          else openMenu("first");
         }}
       >
         {props.children}
@@ -96,12 +140,33 @@ export function MenuTarget(props: { children?: JSX.Element; class?: string; aria
   const [standalone, setStandalone] = createSignal(false);
   let targetRef: HTMLDivElement | undefined;
 
-  onMount(() => setStandalone(!targetRef?.querySelector(FOCUSABLE)));
+  onMount(() => {
+    const focusable = targetRef?.querySelector<HTMLElement>(FOCUSABLE) ?? undefined;
+    setStandalone(!focusable);
+    menu?.setTrigger(focusable ?? targetRef);
+  });
+
+  // A focusable child, e.g. an IconButton, is the menu button, so it carries the button's state.
+  createEffect(() => {
+    const element = menu?.trigger();
+    if (!menu || !element || standalone()) return;
+    element.setAttribute("aria-haspopup", "menu");
+    element.setAttribute("aria-expanded", String(menu.open()));
+    if (menu.open()) element.setAttribute("aria-controls", menu.menuId);
+    else element.removeAttribute("aria-controls");
+  });
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    targetRef?.click();
+    if (!menu) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      menu.openMenu(event.key === "ArrowDown" ? "first" : "last");
+      return;
+    }
+    if (standalone() && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      targetRef?.click();
+    }
   };
 
   return (
@@ -112,8 +177,9 @@ export function MenuTarget(props: { children?: JSX.Element; class?: string; aria
       tabIndex={standalone() ? 0 : undefined}
       aria-haspopup={standalone() ? "menu" : undefined}
       aria-expanded={standalone() && menu ? menu.open() : undefined}
+      aria-controls={standalone() && menu?.open() ? menu.menuId : undefined}
       aria-label={standalone() ? props.ariaLabel : undefined}
-      onKeyDown={event => standalone() && handleKeyDown(event)}
+      onKeyDown={handleKeyDown}
     >
       {props.children}
     </div>
@@ -135,6 +201,29 @@ function StaticMenuDropdown(props: { children?: JSX.Element; class?: string }) {
 function ConnectedMenuDropdown(props: { children?: JSX.Element; class?: string }) {
   const menu = useContext(MenuContext)!;
 
+  const handleKeyDown = (event: KeyboardEvent) => {
+    const items = menuItems(event.currentTarget as HTMLElement);
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const focusAt = (next: number) => {
+      event.preventDefault();
+      items[(next + items.length) % items.length]?.focus();
+    };
+    switch (event.key) {
+      case "ArrowDown":
+        return focusAt(index + 1);
+      case "ArrowUp":
+        return focusAt(index < 0 ? -1 : index - 1);
+      case "Home":
+        return focusAt(0);
+      case "End":
+        return focusAt(-1);
+      case "Tab":
+        // The dropdown sits at the end of <body>, so Tab would leave the page order; go back.
+        event.preventDefault();
+        return menu.close(true);
+    }
+  };
+
   return (
     <FloatingPanel
       open={menu.open()}
@@ -145,7 +234,13 @@ function ConnectedMenuDropdown(props: { children?: JSX.Element; class?: string }
       class={cx("bx-Dropdown", "bx-Menu-dropdown", props.class)}
       onClick={event => event.stopPropagation()}
     >
-      <div role="menu" class="bx-Menu-items">
+      <div
+        id={menu.menuId}
+        role="menu"
+        class="bx-Menu-items"
+        aria-label={menu.trigger()?.getAttribute("aria-label") ?? undefined}
+        onKeyDown={handleKeyDown}
+      >
         {props.children}
       </div>
     </FloatingPanel>
@@ -166,13 +261,13 @@ export interface MenuItemProps extends BaseProps {
   leftSection?: JSX.Element;
   onClick?: (event: MouseEvent) => void;
   disabled?: boolean;
+  /** Marks the current choice in a set, e.g. the active theme; it is announced as checked. */
   selected?: boolean;
   danger?: boolean;
 }
 
 export function MenuItem(props: MenuItemProps) {
   const menu = useContext(MenuContext);
-
   const activate = (event: MouseEvent) => {
     if (props.disabled) {
       event.preventDefault();
@@ -180,7 +275,7 @@ export function MenuItem(props: MenuItemProps) {
       return;
     }
     props.onClick?.(event);
-    menu?.close();
+    menu?.close(true);
   };
 
   return (
@@ -190,8 +285,10 @@ export function MenuItem(props: MenuItemProps) {
       data-disabled={props.disabled ? "" : undefined}
       data-selected={props.selected ? "" : undefined}
       data-danger={props.danger ? "" : undefined}
-      role="menuitem"
-      tabIndex={props.disabled ? -1 : 0}
+      role={props.selected === undefined ? "menuitem" : "menuitemradio"}
+      aria-checked={props.selected === undefined ? undefined : props.selected}
+      // Focus moves between items with the arrow keys, so items are not separate Tab stops.
+      tabIndex={-1}
       aria-disabled={props.disabled === true}
       onClick={activate}
       onKeyDown={event => {

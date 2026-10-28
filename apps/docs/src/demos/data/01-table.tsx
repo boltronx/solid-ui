@@ -15,7 +15,7 @@ import {
   type TableColumn,
   Text
 } from "@boltronx/solid-ui";
-import { DotsVerticalIcon } from "@boltronx/solid-ui/icons";
+import { IconDotsVertical } from "@tabler/icons-solidjs";
 
 interface Order {
   id: string;
@@ -92,7 +92,7 @@ const columns: TableColumn<Order>[] = [
       <Menu position="bottom-end">
         <MenuTarget>
           <IconButton aria-label={`Actions for ${order.id}`}>
-            <DotsVerticalIcon />
+            <IconDotsVertical />
           </IconButton>
         </MenuTarget>
         <MenuDropdown>

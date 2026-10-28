@@ -10,12 +10,14 @@ import {
   splitProps
 } from "solid-js";
 
-import { ChevronDownIcon } from "../../icons/ChevronDownIcon";
+import { ChevronDownIcon } from "../../icons";
+import { createSearchCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
-import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
+import { ComboboxOptionContent, ComboboxState, minLengthHint } from "../Combobox/Combobox";
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 import { Input, type InputProps } from "../Input/Input";
 import { Loader } from "../Loader/Loader";
+import { ScrollArea } from "../ScrollArea/ScrollArea";
 import type { SelectOption } from "../Select/Select";
 
 export interface AutocompleteProps extends Omit<
@@ -41,11 +43,23 @@ export interface AutocompleteProps extends Omit<
   loading?: boolean;
   nothingFoundMessage?: string;
   renderOption?: (option: SelectOption) => JSX.Element;
+  /** Replaces the chevron at the end of the field. */
+  chevronIcon?: JSX.Element;
   /** Called with the text on every keystroke and when a suggestion is picked. */
   onChange?: (value: string) => void;
   onOptionSubmit?: (option: SelectOption) => void;
-  /** Set to search on the server: options are then shown as given, without local filtering. */
-  onSearchChange?: (value: string) => void;
+  /**
+   * Set to search on the server: options are then shown as given, without local filtering. Called
+   * once typing pauses (see `onSearchChangeDebounceMs`), and right away when a suggestion is picked.
+   * The signal aborts when a newer search starts, so pass it to fetch to drop stale responses.
+   */
+  onSearchChange?: (value: string, signal: AbortSignal) => void;
+  /** How long typing must pause before `onSearchChange` is called, in ms. Default 300; 0 calls on every keystroke. */
+  onSearchChangeDebounceMs?: number;
+  /** Text shorter than this is not sent to `onSearchChange`, e.g. 3 for trigram search. */
+  onSearchChangeMinLength?: number;
+  /** Shown while the text is shorter than `onSearchChangeMinLength`. Default "Type at least N characters". */
+  searchMinLengthMessage?: string;
 }
 
 export function Autocomplete(props: AutocompleteProps) {
@@ -56,9 +70,13 @@ export function Autocomplete(props: AutocompleteProps) {
     "loading",
     "nothingFoundMessage",
     "renderOption",
+    "chevronIcon",
     "onChange",
     "onOptionSubmit",
     "onSearchChange",
+    "onSearchChangeDebounceMs",
+    "onSearchChangeMinLength",
+    "searchMinLengthMessage",
     "onFocus",
     "onKeyDown",
     "ref",
@@ -77,6 +95,16 @@ export function Autocomplete(props: AutocompleteProps) {
   let dropdownRef: HTMLDivElement | undefined;
 
   onFormReset(() => inputRef, text.reset);
+  const serverSearch = createSearchCall({
+    callback: () => props.onSearchChange,
+    delay: () => props.onSearchChangeDebounceMs,
+    minLength: () => props.onSearchChangeMinLength
+  });
+  // Too short to search the server: the dropdown asks for more instead of showing stale options.
+  const hint = () =>
+    props.onSearchChange && serverSearch.tooShort(text.value())
+      ? minLengthHint(props.onSearchChangeMinLength, props.searchMinLengthMessage)
+      : undefined;
 
   const visibleOptions = createMemo(() => {
     const search = text.value().trim().toLocaleLowerCase();
@@ -104,18 +132,26 @@ export function Autocomplete(props: AutocompleteProps) {
     setActiveIndex(-1);
   };
 
-  const setText = (value: string) => {
+  /** Typing waits for a pause before searching; a picked suggestion searches right away. */
+  const setText = (value: string, searchNow = false) => {
     text.setValue(value);
     props.onChange?.(value);
-    props.onSearchChange?.(value);
+    if (searchNow) serverSearch.now(value);
+    else serverSearch.schedule(value);
   };
 
   const submitOption = (option: SelectOption) => {
     if (option.disabled) return;
-    setText(option.label);
+    setText(option.label, true);
     props.onOptionSubmit?.(option);
     closeDropdown();
     inputRef?.focus();
+  };
+
+  /** Keeps the option the keyboard moved to in view; hover doesn't call it, so the list holds still. */
+  const scrollActiveIntoView = () => {
+    const option = dropdownRef?.querySelectorAll<HTMLElement>("[role='option']")[activeIndex()];
+    option?.scrollIntoView({ block: "nearest" });
   };
 
   const moveActive = (direction: 1 | -1) => {
@@ -126,6 +162,7 @@ export function Autocomplete(props: AutocompleteProps) {
       next = (next + direction + options.length) % options.length;
     } while (options[next]?.disabled);
     setActiveIndex(next);
+    scrollActiveIntoView();
   };
 
   const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = event => {
@@ -141,11 +178,13 @@ export function Autocomplete(props: AutocompleteProps) {
     if (event.key === "Home" && open()) {
       event.preventDefault();
       setActiveIndex(firstEnabledIndex());
+      scrollActiveIntoView();
       return;
     }
     if (event.key === "End" && open()) {
       event.preventDefault();
       setActiveIndex(visibleOptions().findLastIndex(option => !option.disabled));
+      scrollActiveIntoView();
       return;
     }
     if (event.key === "Enter" && open()) {
@@ -188,7 +227,9 @@ export function Autocomplete(props: AutocompleteProps) {
         aria-controls={listboxId()}
         aria-expanded={open()}
         aria-activedescendant={
-          open() && activeIndex() >= 0 ? `${listboxId()}-${activeIndex()}` : undefined
+          open() && !props.loading && !hint() && activeIndex() >= 0
+            ? `${listboxId()}-${activeIndex()}`
+            : undefined
         }
         ref={element => {
           inputRef = element;
@@ -206,7 +247,7 @@ export function Autocomplete(props: AutocompleteProps) {
         rightSection={
           <span class="bx-Autocomplete-indicator" data-expanded={open() ? "" : undefined}>
             <Show when={!props.loading} fallback={<Loader size="xs" />}>
-              <ChevronDownIcon ariaHidden />
+              {props.chevronIcon ?? <ChevronDownIcon />}
             </Show>
           </span>
         }
@@ -219,32 +260,42 @@ export function Autocomplete(props: AutocompleteProps) {
         class="bx-Dropdown bx-Combobox-dropdown"
         onClick={event => event.stopPropagation()}
       >
-        <div id={listboxId()} class="bx-Combobox-options" role="listbox">
+        {/* The same scrolling list as Select: at most 18rem tall, and it keeps its own scroll. */}
+        <ScrollArea class="bx-Combobox-scroll" viewportClass="bx-Combobox-viewport" scrollbars="y">
           <ComboboxState
             loading={props.loading}
             empty={visibleOptions().length === 0}
             nothingFoundMessage={props.nothingFoundMessage}
+            hint={hint()}
+          />
+          <div
+            id={listboxId()}
+            class="bx-Combobox-options"
+            role="listbox"
+            aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
           >
-            <For each={visibleOptions()}>
-              {(option, index) => (
-                <div
-                  id={`${listboxId()}-${index()}`}
-                  class="bx-Combobox-option"
-                  data-active={index() === activeIndex() ? "" : undefined}
-                  data-disabled={option.disabled ? "" : undefined}
-                  role="option"
-                  aria-selected={index() === activeIndex()}
-                  aria-disabled={option.disabled}
-                  onMouseEnter={() => !option.disabled && setActiveIndex(index())}
-                  onMouseDown={event => event.preventDefault()}
-                  onClick={() => submitOption(option)}
-                >
-                  <ComboboxOptionContent option={option} render={props.renderOption} />
-                </div>
-              )}
-            </For>
-          </ComboboxState>
-        </div>
+            <Show when={!props.loading && !hint()}>
+              <For each={visibleOptions()}>
+                {(option, index) => (
+                  <div
+                    id={`${listboxId()}-${index()}`}
+                    class="bx-Combobox-option"
+                    data-active={index() === activeIndex() ? "" : undefined}
+                    data-disabled={option.disabled ? "" : undefined}
+                    role="option"
+                    aria-selected={index() === activeIndex()}
+                    aria-disabled={option.disabled}
+                    onMouseEnter={() => !option.disabled && setActiveIndex(index())}
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={() => submitOption(option)}
+                  >
+                    <ComboboxOptionContent option={option} render={props.renderOption} />
+                  </div>
+                )}
+              </For>
+            </Show>
+          </div>
+        </ScrollArea>
       </FloatingPanel>
     </>
   );

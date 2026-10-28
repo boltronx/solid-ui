@@ -4,7 +4,7 @@ export const meta = {
 };
 
 import { Input, SimpleGrid } from "@boltronx/solid-ui";
-import { MailIcon } from "@boltronx/solid-ui/icons";
+import { IconMail } from "@tabler/icons-solidjs";
 
 export default function Demo() {
   return (
@@ -14,7 +14,7 @@ export default function Demo() {
         label="Email"
         type="email"
         description="We never share it."
-        leftSection={<MailIcon />}
+        leftSection={<IconMail />}
         placeholder="ada@example.com"
       />
       <Input label="Username" defaultValue="ada" error="This username is taken." />

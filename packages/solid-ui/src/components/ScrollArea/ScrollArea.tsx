@@ -17,10 +17,24 @@ export interface ScrollAreaProps extends BaseProps {
   type?: ScrollAreaType | ScrollAreaSplitType;
   scrollbarSize?: number;
   offsetScrollbars?: boolean;
+  /** The axes it scrolls on, with a scrollbar each; the other axis is left to the page. Default "xy". */
   scrollbars?: "x" | "y" | "xy";
+  /**
+   * What happens past either end. "auto" (default) scrolls the page on, like any scroll box;
+   * "contain" stops there, for panels such as a sidebar; "none" also drops the bounce effect.
+   */
+  overscrollBehavior?: "auto" | "contain" | "none";
   viewportStyle?: StyleProp;
   viewportClass?: string;
   viewportRef?: (el: HTMLDivElement) => void;
+  /**
+   * Makes the scrolling area a Tab stop, so keyboard users can scroll it with the arrow keys in
+   * browsers that don't do this for them (Safari, older Chrome). Use it for content with nothing
+   * focusable inside, such as a block of terms; give it an `aria-label` too.
+   */
+  focusable?: boolean;
+  /** Names the area for screen readers; needed with `focusable`. */
+  "aria-label"?: string;
   onChange?: (pos: { x: number; y: number }) => void;
 }
 
@@ -162,13 +176,6 @@ export function ScrollArea(props: ScrollAreaProps) {
     document.addEventListener("mouseup", onUp);
   };
 
-  const touchAction = () => {
-    const sb = props.scrollbars ?? "xy";
-    if (sb === "x") return "pan-x pinch-zoom";
-    if (sb === "y") return "pan-y pinch-zoom";
-    return "pan-x pan-y pinch-zoom";
-  };
-
   const markHoverActivity = () => {
     if (!inside() || resolvedType() !== "hover") return;
     setHovered(true);
@@ -202,11 +209,15 @@ export function ScrollArea(props: ScrollAreaProps) {
           props.viewportRef?.(el);
         }}
         class={cx("bx-ScrollArea-viewport", props.viewportClass)}
+        tabindex={props.focusable ? 0 : undefined}
+        role={props.focusable ? "region" : undefined}
+        aria-label={props["aria-label"]}
         style={mergeStyle(props.viewportStyle, {
           "padding-right": doOffset() && hasV() ? `${size() + off}px` : "",
           "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : "",
-          "touch-action": touchAction()
+          "overscroll-behavior": props.overscrollBehavior
         })}
+        data-scrollbars={props.scrollbars ?? "xy"}
       >
         {props.children}
       </div>

@@ -2,14 +2,16 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  createUniqueId,
   For,
+  type JSX,
   Match,
   onCleanup,
   splitProps,
   Switch
 } from "solid-js";
 
-import { CloseIcon } from "../../icons/CloseIcon";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "../../icons";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
 import type { FieldOwnProps } from "../Field/Field";
@@ -70,6 +72,14 @@ export interface DatePickerProps extends FieldOwnProps, BaseProps {
   format?: Intl.DateTimeFormatOptions;
   /** 0 is Sunday, 1 is Monday. Default 0. */
   firstDayOfWeek?: number;
+  /** Replaces the calendar shown at the end of the field while it has no clear button. */
+  calendarIcon?: JSX.Element;
+  /** Replaces the cross on the clear button. */
+  clearIcon?: JSX.Element;
+  /** Replaces the arrow that pages back in the calendar. */
+  previousIcon?: JSX.Element;
+  /** Replaces the arrow that pages forward in the calendar. */
+  nextIcon?: JSX.Element;
   "aria-label"?: string;
   /** Receives the picked date as YYYY-MM-DD, or "" when cleared. */
   onChange?: (value: string) => void;
@@ -83,6 +93,7 @@ export interface DatePickerProps extends FieldOwnProps, BaseProps {
 export function DatePicker(props: DatePickerProps) {
   const [local, field] = splitProps(props, ["class", "style"]);
   const isReadOnly = useReadOnly(() => props.readOnly === true);
+  const dialogId = `bx-datepicker-${createUniqueId()}`;
   const date = createControllableSignal<string>({
     value: () => props.value,
     defaultValue: () => props.defaultValue ?? ""
@@ -258,6 +269,18 @@ export function DatePicker(props: DatePickerProps) {
     const decade = years();
     return `${decade[0]} – ${decade[decade.length - 1]}`;
   };
+  /**
+   * The highlighted date, read out as the arrow keys move it: focus stays in the field, so a
+   * screen reader would otherwise not hear it.
+   */
+  const activeAnnouncement = () => {
+    if (!open()) return "";
+    const iso = active();
+    if (level() === "decade") return iso.slice(0, 4);
+    if (level() === "year") return format(iso, formats().monthYear);
+    const notes = [iso === value() && "selected", outOfRange(iso) && "unavailable"].filter(Boolean);
+    return [format(iso, formats().full), ...notes].join(", ");
+  };
   const pageLabel = (direction: "Previous" | "Next") =>
     `${direction} ${{ month: "month", year: "year", decade: "decade" }[level()]}`;
 
@@ -288,8 +311,11 @@ export function DatePicker(props: DatePickerProps) {
         readOnly={field.readOnly}
         inputMode="none"
         autocomplete="off"
+        // A combobox that pops up a dialog: the ARIA pattern for a date field with a calendar.
+        role="combobox"
         aria-haspopup="dialog"
         aria-expanded={open()}
+        aria-controls={open() ? dialogId : undefined}
         inputClass="bx-DatePicker-input"
         ref={setInputRef}
         onKeyDown={handleKeyDown}
@@ -308,19 +334,19 @@ export function DatePicker(props: DatePickerProps) {
                     commit("");
                   }}
                 >
-                  <CloseIcon ariaHidden />
+                  {props.clearIcon ?? <CloseIcon />}
                 </button>
               )
             }
           ) : (
-            <svg class="bx-DatePicker-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="5" width="16" height="16" rx="2" />
-              <path d="M16 3v4M8 3v4M4 11h16" />
-            </svg>
+            <span class="bx-DatePicker-icon">{props.calendarIcon ?? <CalendarIcon />}</span>
           )
         }
       />
       <input type="hidden" name={field.name} value={value()} disabled={field.disabled} />
+      <span class="bx-visually-hidden" aria-live="polite" aria-atomic="true">
+        {activeAnnouncement()}
+      </span>
       <FloatingPanel
         open={open()}
         target={() => inputRef?.parentElement ?? undefined}
@@ -331,8 +357,9 @@ export function DatePicker(props: DatePickerProps) {
       >
         {/* Keeps focus in the input, so the keyboard keeps driving the calendar. */}
         <div
+          id={dialogId}
           role="dialog"
-          aria-label={field.label ? undefined : "Choose a date"}
+          aria-label="Choose a date"
           onMouseDown={event => event.preventDefault()}
         >
           <div class="bx-DatePicker-header">
@@ -342,9 +369,7 @@ export function DatePicker(props: DatePickerProps) {
               aria-label={pageLabel("Previous")}
               onClick={() => page(-1)}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M15 6l-6 6 6 6" />
-              </svg>
+              {props.previousIcon ?? <ChevronLeftIcon />}
             </button>
             <button
               type="button"
@@ -361,9 +386,7 @@ export function DatePicker(props: DatePickerProps) {
               aria-label={pageLabel("Next")}
               onClick={() => page(1)}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
+              {props.nextIcon ?? <ChevronRightIcon />}
             </button>
           </div>
           <Switch>

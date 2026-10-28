@@ -4,6 +4,8 @@
   --bx-table-edge-shadow: color-mix(in oklab, black 35%, transparent);
 
   position: relative;
+  /* Sticky headers, fixed columns and the loading overlay layer inside the table only. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -218,10 +220,16 @@
 }
 
 .bx-Table-emptyIcon {
+  display: inline-flex;
   width: 40px;
   height: 40px;
   margin-bottom: var(--bx-spacing-md);
   color: var(--bx-placeholder);
+
+  > svg {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .bx-Table-emptyTitle {

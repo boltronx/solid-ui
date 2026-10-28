@@ -10,7 +10,7 @@ import {
   untrack
 } from "solid-js";
 
-import { FolderEmptyIcon } from "../../icons/FolderEmptyIcon";
+import { FolderEmptyIcon } from "../../icons";
 import { type BaseProps, cx, mergeStyle } from "../../utils/style";
 import { Loader } from "../Loader/Loader";
 import { Pagination } from "../Pagination/Pagination";
@@ -53,6 +53,8 @@ export interface TableProps<T> extends BaseProps {
   loading?: boolean;
   emptyMessage?: JSX.Element;
   emptyDescription?: JSX.Element;
+  /** Replaces the empty folder shown when there are no rows. */
+  emptyIcon?: JSX.Element;
   pagination?: TablePagination;
   /** Below this width the table scrolls sideways. Default "40rem". */
   minWidth?: string;
@@ -265,7 +267,7 @@ export function Table<T>(props: TableProps<T>) {
 
       <Show when={isEmpty() && !props.loading}>
         <div class="bx-Table-empty" role="status">
-          <FolderEmptyIcon ariaHidden class="bx-Table-emptyIcon" />
+          <span class="bx-Table-emptyIcon">{props.emptyIcon ?? <FolderEmptyIcon />}</span>
           <p class="bx-Table-emptyTitle">{props.emptyMessage ?? "No data found"}</p>
           <Show when={props.emptyDescription}>
             <p class="bx-Table-emptyDescription">{props.emptyDescription}</p>

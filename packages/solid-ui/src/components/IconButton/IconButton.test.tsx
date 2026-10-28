@@ -6,20 +6,21 @@ import { describe, expect, it, vi } from "vitest";
 import { IconButton } from "./IconButton";
 
 describe("IconButton", () => {
-  it("uses the tooltip as its accessible name and description", () => {
+  it("uses the tooltip as its accessible name, without repeating it as the description", () => {
     render(() => <IconButton tooltip="Delete">×</IconButton>);
     const button = screen.getByRole("button", { name: "Delete" });
-    expect(button).toHaveAccessibleDescription("Delete");
+    expect(button).not.toHaveAttribute("aria-describedby");
     expect(screen.getByRole("tooltip")).toHaveTextContent("Delete");
   });
 
-  it("prefers an explicit aria-label over the tooltip", () => {
+  it("prefers an explicit aria-label, and then the tooltip describes the button", () => {
     render(() => (
       <IconButton tooltip="Delete" aria-label="Delete row 3">
         ×
       </IconButton>
     ));
-    expect(screen.getByRole("button", { name: "Delete row 3" })).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Delete row 3" });
+    expect(button).toHaveAccessibleDescription("Delete");
   });
 
   it("defaults to type=button and passes clicks through", async () => {
@@ -44,5 +45,21 @@ describe("IconButton", () => {
     ));
     await Promise.resolve();
     expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  });
+
+  it("shows its tooltip in a portal on hover, so overflow:hidden parents can't clip it", async () => {
+    render(() => (
+      <div style={{ overflow: "hidden" }} data-testid="clipping-parent">
+        <IconButton tooltip="Settings">×</IconButton>
+      </div>
+    ));
+    expect(document.querySelector(".bx-IconButton-tooltip")).toBeNull();
+    await userEvent.hover(screen.getByRole("button", { name: "Settings" }));
+    const visible = document.querySelector(".bx-IconButton-tooltip")!;
+    expect(visible).toHaveTextContent("Settings");
+    expect(screen.getByTestId("clipping-parent")).not.toContainElement(visible as HTMLElement);
+
+    await userEvent.unhover(screen.getByRole("button", { name: "Settings" }));
+    expect(visible).toHaveAttribute("data-open", "false");
   });
 });

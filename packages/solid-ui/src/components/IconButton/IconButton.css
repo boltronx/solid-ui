@@ -66,33 +66,27 @@
 }
 
 .bx-IconButton-wrapper {
-  position: relative;
   display: inline-flex;
 }
 
-.bx-IconButton-tooltip {
-  position: absolute;
-  bottom: calc(100% + 0.375rem);
-  left: 50%;
-  z-index: var(--bx-z-popover);
+/* Portaled with FloatingPanel, which places it; above every other layer. */
+.bx-FloatingPanel.bx-IconButton-tooltip {
+  z-index: var(--bx-z-tooltip);
   padding: 0.25rem 0.5rem;
   font-size: var(--bx-font-size-xs);
   white-space: nowrap;
   color: var(--bx-tooltip-text);
   background: var(--bx-tooltip-bg);
   border-radius: var(--bx-radius-md);
-  opacity: 0;
   pointer-events: none;
-  transform: translateX(-50%);
+  opacity: 0;
   transition: opacity var(--bx-duration) ease;
 
-  @media (hover: hover) {
-    .bx-IconButton-wrapper:hover > & {
-      opacity: 1;
-    }
-  }
-
-  .bx-IconButton:focus-visible + & {
+  &[data-open="true"] {
     opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
   }
 }

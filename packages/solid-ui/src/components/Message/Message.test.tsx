@@ -64,4 +64,36 @@ describe("message", () => {
       "data-exiting"
     );
   });
+
+  it("shows three at a time and queues the rest, each timed from when it appears", () => {
+    for (const n of [1, 2, 3, 4, 5]) message.info(`Message ${n}`, 2);
+    expect(screen.getByText("Message 3")).toBeInTheDocument();
+    expect(screen.queryByText("Message 4")).toBeNull();
+
+    // The first three leave together; the queued two come in as they start leaving.
+    vi.advanceTimersByTime(2000);
+    expect(screen.getByText("Message 4")).toBeInTheDocument();
+    expect(screen.getByText("Message 5")).toBeInTheDocument();
+    const fourth = screen.getByText("Message 4").closest(".bx-Message-item")!;
+    expect(fourth).not.toHaveAttribute("data-exiting");
+
+    // Its own two seconds, not two seconds from when it was queued.
+    vi.advanceTimersByTime(1999);
+    expect(fourth).not.toHaveAttribute("data-exiting");
+    vi.advanceTimersByTime(1);
+    expect(fourth).toHaveAttribute("data-exiting");
+  });
+
+  it("takes a different limit from config", () => {
+    message.config({ limit: 1 });
+    try {
+      message.success("First", 2);
+      message.success("Second", 2);
+      expect(screen.queryByText("Second")).toBeNull();
+      vi.advanceTimersByTime(2000);
+      expect(screen.getByText("Second")).toBeInTheDocument();
+    } finally {
+      message.config({ limit: 3 });
+    }
+  });
 });

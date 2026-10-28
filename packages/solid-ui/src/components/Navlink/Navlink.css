@@ -60,7 +60,7 @@
     transform: rotate(90deg);
   }
 
-  > .bx-Navlink-chevronIcon {
+  > svg {
     width: 1em;
     height: 1em;
   }

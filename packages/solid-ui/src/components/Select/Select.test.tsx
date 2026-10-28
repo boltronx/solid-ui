@@ -64,6 +64,21 @@ describe("Select", () => {
     expect(data().get("fruit")).toBe("apple");
   });
 
+  it("stays valid after a reset when required with a default value", async () => {
+    const { form, reset } = renderInForm(() => (
+      <Select label="Fruit" name="fruit" options={fruits} defaultValue="apple" required />
+    ));
+    // Untouched, and then picked and reset, in the order a user's reset click runs things.
+    await reset();
+    expect(form.checkValidity()).toBe(true);
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await pick("Banana");
+    await reset();
+    expect(form.checkValidity()).toBe(true);
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("leaves a controlled value to the parent", async () => {
     const [value, setValue] = createSignal("apple");
     const onChange = vi.fn();
@@ -85,6 +100,33 @@ describe("Select", () => {
       <Select label="Fruit" name="fruit" options={fruits} required />
     ));
     expect(form.checkValidity()).toBe(false);
+  });
+
+  it("validates like a native select: no dropdown, and focus goes to the field", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Select label="Fruit" name="fruit" options={fruits} required />
+        <Select label="Snack" name="snack" options={fruits} required />
+      </>
+    ));
+    // The browser shows its own bubble on the first invalid field; Select stays closed.
+    form.requestSubmit();
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    // Validation focuses the native select, which hands focus to the combobox.
+    const validator = form.querySelector<HTMLSelectElement>("select.bx-Select-validator")!;
+    expect(validator.required).toBe(true);
+    validator.focus();
+    expect(screen.getByRole("combobox", { name: "Fruit" })).toHaveFocus();
+  });
+
+  it("is valid once a value is picked", async () => {
+    const { form } = renderInForm(() => (
+      <Select label="Fruit" name="fruit" options={fruits} required />
+    ));
+    await userEvent.click(screen.getByRole("combobox"));
+    await pick("Banana");
+    expect(form.checkValidity()).toBe(true);
   });
 
   it("opens with the keyboard and picks with Enter", async () => {

@@ -6,7 +6,7 @@ export const meta = {
 import { createSignal } from "solid-js";
 
 import { Button, Group, Stack } from "@boltronx/solid-ui";
-import { DownloadIcon, PlusIcon } from "@boltronx/solid-ui/icons";
+import { IconDownload, IconPlus } from "@tabler/icons-solidjs";
 
 export default function Demo() {
   const [saving, setSaving] = createSignal(false);
@@ -18,8 +18,8 @@ export default function Demo() {
   return (
     <Stack>
       <Group wrap>
-        <Button leftSection={<PlusIcon />}>New item</Button>
-        <Button rightSection={<DownloadIcon />}>Export</Button>
+        <Button leftSection={<IconPlus />}>New item</Button>
+        <Button rightSection={<IconDownload />}>Export</Button>
         <Button variant="primary" loading={saving()} onClick={save}>
           {saving() ? "Saving" : "Save"}
         </Button>

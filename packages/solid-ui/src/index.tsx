@@ -49,7 +49,7 @@ export type { LoaderProps } from "./components/Loader/Loader";
 export { Loader } from "./components/Loader/Loader";
 export type { MenuItemProps, MenuPosition, MenuProps } from "./components/Menu/Menu";
 export { Menu, MenuDivider, MenuDropdown, MenuItem, MenuTarget } from "./components/Menu/Menu";
-export type { MessageType } from "./components/Message/Message";
+export type { MessageConfig, MessageOptions, MessageType } from "./components/Message/Message";
 export { message } from "./components/Message/Message";
 export type {
   ModalContext,
@@ -85,6 +85,7 @@ export type { TextareaProps } from "./components/Textarea/Textarea";
 export { Textarea } from "./components/Textarea/Textarea";
 export type { TitleOrder, TitleProps } from "./components/Title/Title";
 export { Title } from "./components/Title/Title";
+export { focusFirstInvalid } from "./utils/form";
 export type {
   AlignItems,
   BaseProps,

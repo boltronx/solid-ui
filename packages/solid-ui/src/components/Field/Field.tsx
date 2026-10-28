@@ -67,11 +67,13 @@ export function Field(props: FieldProps) {
         </p>
       </Show>
       {props.children}
-      <Show when={props.error}>
-        <p id={ids().error} class="bx-Field-error">
-          {props.error}
-        </p>
-      </Show>
+      {/*
+        Always rendered, empty without an error: a live region only speaks reliably when it was
+        on the page before its text changed. The control links to it only while there is one.
+      */}
+      <p id={ids().error} class="bx-Field-error" aria-live="polite">
+        {props.error}
+      </p>
     </div>
   );
 }

@@ -10,13 +10,13 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "12.16.0",
+      "version": "12.16.1",
       "onFail": "download"
     }
   },
   "engines": {
     "node": ">=24.22.1",
-    "pnpm": ">=12.16.0"
+    "pnpm": ">=12.16.1"
   },
   "scripts": {
     "dev": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter docs dev",
@@ -30,7 +30,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "spellcheck": "cspell . --no-progress --gitignore",
-    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm lint:package"
+    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm lint:package",
+    "update-deps": "pnpm up -r -Li"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
