@@ -11,7 +11,7 @@ import {
 } from "solid-js";
 
 import { CheckIcon, ChevronDownIcon, CloseIcon } from "../../icons";
-import { createControllableSignal, onFormReset } from "../../utils/form";
+import { createControllableSignal, keepControlledOnReset, onFormReset } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
@@ -102,9 +102,16 @@ export function Select(props: SelectProps) {
   const [optionCache, setOptionCache] = createSignal(untrack(() => props.options));
   const [hasLoadedOptions, setHasLoadedOptions] = createSignal(!untrack(() => props.loading));
   let rootRef: HTMLDivElement | undefined;
+  let validatorRef: HTMLInputElement | undefined;
   let dropdownRef: HTMLDivElement | undefined;
 
   onFormReset(() => rootRef, selection.reset);
+  // The browser resets the validator to its empty default after the reset event, which would make
+  // a required select with a default value look empty; write the restored value back.
+  keepControlledOnReset(
+    () => validatorRef,
+    () => selectedValues()[0] ?? ""
+  );
 
   createEffect(() => {
     const loadedOptions = props.options;
@@ -456,6 +463,7 @@ export function Select(props: SelectProps) {
       </For>
       {/* Hidden inputs skip validation, so `required` is checked on this invisible text input. */}
       <input
+        ref={element => (validatorRef = element)}
         class="bx-Select-validator"
         value={selectedValues()[0] ?? ""}
         required={props.required}
