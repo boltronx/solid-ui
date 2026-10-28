@@ -68,8 +68,7 @@ describe("Select", () => {
     const { form, reset } = renderInForm(() => (
       <Select label="Fruit" name="fruit" options={fruits} defaultValue="apple" required />
     ));
-    // Untouched, and then picked and reset: the browser resets the hidden validator to empty
-    // after the reset event, so it has to be refilled or submit would open the dropdown.
+    // Untouched, and then picked and reset, in the order a user's reset click runs things.
     await reset();
     expect(form.checkValidity()).toBe(true);
 
@@ -101,6 +100,33 @@ describe("Select", () => {
       <Select label="Fruit" name="fruit" options={fruits} required />
     ));
     expect(form.checkValidity()).toBe(false);
+  });
+
+  it("validates like a native select: no dropdown, and focus goes to the field", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Select label="Fruit" name="fruit" options={fruits} required />
+        <Select label="Snack" name="snack" options={fruits} required />
+      </>
+    ));
+    // The browser shows its own bubble on the first invalid field; Select stays closed.
+    form.requestSubmit();
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    // Validation focuses the native select, which hands focus to the combobox.
+    const validator = form.querySelector<HTMLSelectElement>("select.bx-Select-validator")!;
+    expect(validator.required).toBe(true);
+    validator.focus();
+    expect(screen.getByRole("combobox", { name: "Fruit" })).toHaveFocus();
+  });
+
+  it("is valid once a value is picked", async () => {
+    const { form } = renderInForm(() => (
+      <Select label="Fruit" name="fruit" options={fruits} required />
+    ));
+    await userEvent.click(screen.getByRole("combobox"));
+    await pick("Banana");
+    expect(form.checkValidity()).toBe(true);
   });
 
   it("opens with the keyboard and picks with Enter", async () => {

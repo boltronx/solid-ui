@@ -2,7 +2,8 @@ import { type Accessor, createSignal, onCleanup, onMount, untrack } from "solid-
 
 /**
  * Runs `handler` when the element's form is reset. The reset event fires before the browser
- * restores native controls, so state set here is in place by the time they repaint.
+ * restores native controls, so state set here is in place by the time they repaint. Work that
+ * must see or override the restored controls goes through `afterFormReset`.
  */
 export function onFormReset(element: Accessor<HTMLElement | undefined>, handler: () => void) {
   onMount(() => {
@@ -12,6 +13,15 @@ export function onFormReset(element: Accessor<HTMLElement | undefined>, handler:
     form.addEventListener("reset", handler);
     onCleanup(() => form.removeEventListener("reset", handler));
   });
+}
+
+/**
+ * Runs `fn` once a form reset has finished restoring the native controls. Not a microtask: after a
+ * user clicks a reset button, microtasks run between the reset event and the restore, so work
+ * queued that way is undone. A task runs after it.
+ */
+export function afterFormReset(fn: () => void) {
+  setTimeout(fn);
 }
 
 /**
@@ -25,7 +35,7 @@ export function keepControlledOnReset(
 ) {
   onFormReset(element, () => {
     if (value() === undefined) return;
-    queueMicrotask(() => {
+    afterFormReset(() => {
       const el = element();
       const current = value();
       if (el && current !== undefined) el.value = String(current);

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, type JSX, splitProps, untrack } from "solid-js";
 
 import { CloseIcon } from "../../icons";
-import { onFormReset } from "../../utils/form";
+import { afterFormReset, onFormReset } from "../../utils/form";
 import { Input, type InputProps } from "../Input/Input";
 
 export interface InputSearchProps extends Omit<InputProps, "type" | "rightSection" | "inputMode"> {
@@ -22,7 +22,7 @@ export function InputSearch(props: InputSearchProps) {
 
   onFormReset(
     () => input,
-    () => queueMicrotask(() => setHasValue((input?.value.length ?? 0) > 0))
+    () => afterFormReset(() => setHasValue((input?.value.length ?? 0) > 0))
   );
 
   const clear = () => {

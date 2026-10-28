@@ -11,7 +11,7 @@ import {
 } from "solid-js";
 
 import { CheckIcon, ChevronDownIcon, CloseIcon } from "../../icons";
-import { createControllableSignal, keepControlledOnReset, onFormReset } from "../../utils/form";
+import { createControllableSignal, onFormReset } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
@@ -102,16 +102,9 @@ export function Select(props: SelectProps) {
   const [optionCache, setOptionCache] = createSignal(untrack(() => props.options));
   const [hasLoadedOptions, setHasLoadedOptions] = createSignal(!untrack(() => props.loading));
   let rootRef: HTMLDivElement | undefined;
-  let validatorRef: HTMLInputElement | undefined;
   let dropdownRef: HTMLDivElement | undefined;
 
   onFormReset(() => rootRef, selection.reset);
-  // The browser resets the validator to its empty default after the reset event, which would make
-  // a required select with a default value look empty; write the restored value back.
-  keepControlledOnReset(
-    () => validatorRef,
-    () => selectedValues()[0] ?? ""
-  );
 
   createEffect(() => {
     const loadedOptions = props.options;
@@ -461,21 +454,22 @@ export function Select(props: SelectProps) {
       <For each={submittedValues()}>
         {value => <input type="hidden" name={props.name} value={value} disabled={props.disabled} />}
       </For>
-      {/* Hidden inputs skip validation, so `required` is checked on this invisible text input. */}
-      <input
-        ref={element => (validatorRef = element)}
+      {/*
+        `required` is checked by a native <select> with a single option holding the value: the
+        browser then validates it like any select, with its own "Please select an item" message,
+        in order with the other fields. A reset cannot change a single option, so nothing has to
+        be restored. When validation focuses it, focus moves on to the combobox.
+      */}
+      <select
         class="bx-Select-validator"
-        value={selectedValues()[0] ?? ""}
         required={props.required}
         disabled={props.disabled}
         tabindex={-1}
         aria-hidden="true"
-        onInvalid={event => {
-          event.preventDefault();
-          rootRef?.focus();
-          openDropdown();
-        }}
-      />
+        onFocus={() => rootRef?.focus()}
+      >
+        <option value={selectedValues()[0] ?? ""} />
+      </select>
     </Field>
   );
 }

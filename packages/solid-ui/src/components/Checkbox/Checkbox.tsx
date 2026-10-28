@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { createUniqueId, splitProps } from "solid-js";
 
-import { onFormReset } from "../../utils/form";
+import { afterFormReset, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
 
@@ -44,15 +44,17 @@ export function Checkbox(props: CheckboxProps) {
   let input: HTMLInputElement | undefined;
 
   // A controlled box shows the parent's state, so a click or a reset is undone once it finishes.
-  const restore = (checked: boolean | undefined) => {
+  // A click has toggled the box before its events, so a microtask is late enough for it; a reset
+  // restores the box after its event, so that waits for afterFormReset.
+  const restore = (checked: boolean | undefined, schedule = queueMicrotask) => {
     if (checked === undefined) return;
-    queueMicrotask(() => {
+    schedule(() => {
       if (input) input.checked = checked;
     });
   };
   onFormReset(
     () => input,
-    () => restore(rest.checked)
+    () => restore(rest.checked, afterFormReset)
   );
 
   return (

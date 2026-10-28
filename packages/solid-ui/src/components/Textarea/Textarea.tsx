@@ -8,7 +8,7 @@ import {
   untrack
 } from "solid-js";
 
-import { keepControlledOnReset, onFormReset } from "../../utils/form";
+import { afterFormReset, keepControlledOnReset, onFormReset } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
@@ -106,7 +106,7 @@ export function Textarea(props: TextareaProps) {
   onFormReset(
     () => textarea,
     () =>
-      queueMicrotask(() => {
+      afterFormReset(() => {
         setCharacterCount(textarea?.value.length ?? 0);
         fit();
       })
