@@ -19,6 +19,11 @@ export interface ScrollAreaProps extends BaseProps {
   offsetScrollbars?: boolean;
   /** The axes it scrolls on, with a scrollbar each; the other axis is left to the page. Default "xy". */
   scrollbars?: "x" | "y" | "xy";
+  /**
+   * What happens past either end. "auto" (default) scrolls the page on, like any scroll box;
+   * "contain" stops there, for panels such as a sidebar; "none" also drops the bounce effect.
+   */
+  overscrollBehavior?: "auto" | "contain" | "none";
   viewportStyle?: StyleProp;
   viewportClass?: string;
   viewportRef?: (el: HTMLDivElement) => void;
@@ -209,7 +214,8 @@ export function ScrollArea(props: ScrollAreaProps) {
         aria-label={props["aria-label"]}
         style={mergeStyle(props.viewportStyle, {
           "padding-right": doOffset() && hasV() ? `${size() + off}px` : "",
-          "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : ""
+          "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : "",
+          "overscroll-behavior": props.overscrollBehavior
         })}
         data-scrollbars={props.scrollbars ?? "xy"}
       >

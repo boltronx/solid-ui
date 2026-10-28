@@ -143,7 +143,11 @@ function Shell(props: RouteSectionProps) {
       </header>
       <div class="docs-overlay" onClick={() => setNavOpen(false)} />
       <aside id="docs-sidebar" class="docs-sidebar">
-        <ScrollArea class="docs-sidebar-scroll" viewportClass="docs-sidebar-viewport">
+        <ScrollArea
+          class="docs-sidebar-scroll"
+          viewportClass="docs-sidebar-viewport"
+          overscrollBehavior="contain"
+        >
           <Navigation onNavigate={() => setNavOpen(false)} />
         </ScrollArea>
       </aside>

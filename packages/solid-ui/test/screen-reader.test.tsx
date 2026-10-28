@@ -311,3 +311,21 @@ describe("ScrollArea focusable", () => {
     expect(screen.getByRole("region", { name: "Terms of service" })).toHaveFocus();
   });
 });
+
+describe("ScrollArea overscrollBehavior", () => {
+  it("passes the page the scroll by default, and keeps it with contain", () => {
+    renderInForm(() => (
+      <>
+        <ScrollArea height={80} viewportClass="default-area">
+          <p>Default</p>
+        </ScrollArea>
+        <ScrollArea height={80} viewportClass="contained-area" overscrollBehavior="contain">
+          <p>Sidebar</p>
+        </ScrollArea>
+      </>
+    ));
+    const style = (cls: string) => document.querySelector<HTMLElement>(`.${cls}`)!.style;
+    expect(style("default-area").overscrollBehavior).toBe("");
+    expect(style("contained-area").overscrollBehavior).toBe("contain");
+  });
+});
