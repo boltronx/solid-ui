@@ -17,6 +17,7 @@ import { ComboboxOptionContent, ComboboxState, minLengthHint } from "../Combobox
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 import { Input, type InputProps } from "../Input/Input";
 import { Loader } from "../Loader/Loader";
+import { ScrollArea } from "../ScrollArea/ScrollArea";
 import type { SelectOption } from "../Select/Select";
 
 export interface AutocompleteProps extends Omit<
@@ -147,6 +148,12 @@ export function Autocomplete(props: AutocompleteProps) {
     inputRef?.focus();
   };
 
+  /** Keeps the option the keyboard moved to in view; hover doesn't call it, so the list holds still. */
+  const scrollActiveIntoView = () => {
+    const option = dropdownRef?.querySelectorAll<HTMLElement>("[role='option']")[activeIndex()];
+    option?.scrollIntoView({ block: "nearest" });
+  };
+
   const moveActive = (direction: 1 | -1) => {
     const options = visibleOptions();
     if (!options.some(option => !option.disabled)) return;
@@ -155,6 +162,7 @@ export function Autocomplete(props: AutocompleteProps) {
       next = (next + direction + options.length) % options.length;
     } while (options[next]?.disabled);
     setActiveIndex(next);
+    scrollActiveIntoView();
   };
 
   const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = event => {
@@ -170,11 +178,13 @@ export function Autocomplete(props: AutocompleteProps) {
     if (event.key === "Home" && open()) {
       event.preventDefault();
       setActiveIndex(firstEnabledIndex());
+      scrollActiveIntoView();
       return;
     }
     if (event.key === "End" && open()) {
       event.preventDefault();
       setActiveIndex(visibleOptions().findLastIndex(option => !option.disabled));
+      scrollActiveIntoView();
       return;
     }
     if (event.key === "Enter" && open()) {
@@ -250,39 +260,42 @@ export function Autocomplete(props: AutocompleteProps) {
         class="bx-Dropdown bx-Combobox-dropdown"
         onClick={event => event.stopPropagation()}
       >
-        <ComboboxState
-          loading={props.loading}
-          empty={visibleOptions().length === 0}
-          nothingFoundMessage={props.nothingFoundMessage}
-          hint={hint()}
-        />
-        <div
-          id={listboxId()}
-          class="bx-Combobox-options"
-          role="listbox"
-          aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
-        >
-          <Show when={!props.loading && !hint()}>
-            <For each={visibleOptions()}>
-              {(option, index) => (
-                <div
-                  id={`${listboxId()}-${index()}`}
-                  class="bx-Combobox-option"
-                  data-active={index() === activeIndex() ? "" : undefined}
-                  data-disabled={option.disabled ? "" : undefined}
-                  role="option"
-                  aria-selected={index() === activeIndex()}
-                  aria-disabled={option.disabled}
-                  onMouseEnter={() => !option.disabled && setActiveIndex(index())}
-                  onMouseDown={event => event.preventDefault()}
-                  onClick={() => submitOption(option)}
-                >
-                  <ComboboxOptionContent option={option} render={props.renderOption} />
-                </div>
-              )}
-            </For>
-          </Show>
-        </div>
+        {/* The same scrolling list as Select: at most 18rem tall, and it keeps its own scroll. */}
+        <ScrollArea class="bx-Combobox-scroll" viewportClass="bx-Combobox-viewport" scrollbars="y">
+          <ComboboxState
+            loading={props.loading}
+            empty={visibleOptions().length === 0}
+            nothingFoundMessage={props.nothingFoundMessage}
+            hint={hint()}
+          />
+          <div
+            id={listboxId()}
+            class="bx-Combobox-options"
+            role="listbox"
+            aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
+          >
+            <Show when={!props.loading && !hint()}>
+              <For each={visibleOptions()}>
+                {(option, index) => (
+                  <div
+                    id={`${listboxId()}-${index()}`}
+                    class="bx-Combobox-option"
+                    data-active={index() === activeIndex() ? "" : undefined}
+                    data-disabled={option.disabled ? "" : undefined}
+                    role="option"
+                    aria-selected={index() === activeIndex()}
+                    aria-disabled={option.disabled}
+                    onMouseEnter={() => !option.disabled && setActiveIndex(index())}
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={() => submitOption(option)}
+                  >
+                    <ComboboxOptionContent option={option} render={props.renderOption} />
+                  </div>
+                )}
+              </For>
+            </Show>
+          </div>
+        </ScrollArea>
       </FloatingPanel>
     </>
   );

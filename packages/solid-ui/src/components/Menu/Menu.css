@@ -15,7 +15,8 @@
 
 .bx-Menu-dropdown {
   min-width: 180px;
-  overflow: hidden;
+  /* Clips items to the rounded corners, and a menu taller than the screen scrolls (contained). */
+  overflow-y: auto;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
