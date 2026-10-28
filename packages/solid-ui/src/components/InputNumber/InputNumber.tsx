@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js";
-import { createSignal, onCleanup, splitProps } from "solid-js";
+import { createSignal, splitProps } from "solid-js";
 
+import { createDebouncedCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import { Input, type InputProps } from "../Input/Input";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
@@ -29,8 +30,11 @@ export interface InputNumberProps extends Omit<
   currency?: string;
   /** Delay before `onInput` reports a value while typing. Default 400ms. */
   onInputDebounceMs?: number;
-  /** Called while typing (debounced) and on blur. */
-  onInput?: (value: number | null) => void;
+  /**
+   * Called while typing (debounced) and on blur. The signal aborts when the next call is made, so
+   * a request started here (e.g. a price quote) can drop a stale response.
+   */
+  onInput?: (value: number | null, signal: AbortSignal) => void;
   /** Called on blur with the parsed, clamped and rounded value. */
   onChange?: (value: number | null) => void;
 }
@@ -171,9 +175,10 @@ export function InputNumber(props: InputNumberProps) {
   const [rawText, setRawText] = createSignal("");
   const isReadOnly = useReadOnly(() => local.readOnly === true);
   let input: HTMLInputElement | undefined;
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-
-  onCleanup(() => clearTimeout(debounceTimer));
+  const debouncedInput = createDebouncedCall<number | null>(
+    () => local.onInput,
+    () => local.onInputDebounceMs ?? 400
+  );
   onFormReset(() => input, state.reset);
 
   const displayValue = () => (focused() ? rawText() : formatNumber(state.value(), decimalConfig()));
@@ -196,11 +201,10 @@ export function InputNumber(props: InputNumberProps) {
 
   const handleBlur: JSX.FocusEventHandler<HTMLInputElement, FocusEvent> = event => {
     if (focused()) {
-      clearTimeout(debounceTimer);
       const value = round(clamp(parseNumber(rawText())));
       state.setValue(value);
       setFocused(false);
-      local.onInput?.(value);
+      debouncedInput.now(value);
       local.onChange?.(value);
     }
     if (typeof local.onBlur === "function") local.onBlur(event);
@@ -213,13 +217,7 @@ export function InputNumber(props: InputNumberProps) {
       return;
     }
     setRawText(text);
-    if (!local.onInput) return;
-    clearTimeout(debounceTimer);
-    const value = clamp(parseNumber(text));
-    debounceTimer = setTimeout(
-      () => local.onInput?.(value),
-      Math.max(0, local.onInputDebounceMs ?? 400)
-    );
+    if (local.onInput) debouncedInput.schedule(clamp(parseNumber(text)));
   };
 
   return (

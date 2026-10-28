@@ -11,8 +11,9 @@ import {
 } from "solid-js";
 
 import { ChevronDownIcon } from "../../icons";
+import { createSearchCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
-import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
+import { ComboboxOptionContent, ComboboxState, minLengthHint } from "../Combobox/Combobox";
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 import { Input, type InputProps } from "../Input/Input";
 import { Loader } from "../Loader/Loader";
@@ -46,8 +47,18 @@ export interface AutocompleteProps extends Omit<
   /** Called with the text on every keystroke and when a suggestion is picked. */
   onChange?: (value: string) => void;
   onOptionSubmit?: (option: SelectOption) => void;
-  /** Set to search on the server: options are then shown as given, without local filtering. */
-  onSearchChange?: (value: string) => void;
+  /**
+   * Set to search on the server: options are then shown as given, without local filtering. Called
+   * once typing pauses (see `onSearchChangeDebounceMs`), and right away when a suggestion is picked.
+   * The signal aborts when a newer search starts, so pass it to fetch to drop stale responses.
+   */
+  onSearchChange?: (value: string, signal: AbortSignal) => void;
+  /** How long typing must pause before `onSearchChange` is called, in ms. Default 300; 0 calls on every keystroke. */
+  onSearchChangeDebounceMs?: number;
+  /** Text shorter than this is not sent to `onSearchChange`, e.g. 3 for trigram search. */
+  onSearchChangeMinLength?: number;
+  /** Shown while the text is shorter than `onSearchChangeMinLength`. Default "Type at least N characters". */
+  searchMinLengthMessage?: string;
 }
 
 export function Autocomplete(props: AutocompleteProps) {
@@ -62,6 +73,9 @@ export function Autocomplete(props: AutocompleteProps) {
     "onChange",
     "onOptionSubmit",
     "onSearchChange",
+    "onSearchChangeDebounceMs",
+    "onSearchChangeMinLength",
+    "searchMinLengthMessage",
     "onFocus",
     "onKeyDown",
     "ref",
@@ -80,6 +94,16 @@ export function Autocomplete(props: AutocompleteProps) {
   let dropdownRef: HTMLDivElement | undefined;
 
   onFormReset(() => inputRef, text.reset);
+  const serverSearch = createSearchCall({
+    callback: () => props.onSearchChange,
+    delay: () => props.onSearchChangeDebounceMs,
+    minLength: () => props.onSearchChangeMinLength
+  });
+  // Too short to search the server: the dropdown asks for more instead of showing stale options.
+  const hint = () =>
+    props.onSearchChange && serverSearch.tooShort(text.value())
+      ? minLengthHint(props.onSearchChangeMinLength, props.searchMinLengthMessage)
+      : undefined;
 
   const visibleOptions = createMemo(() => {
     const search = text.value().trim().toLocaleLowerCase();
@@ -107,15 +131,17 @@ export function Autocomplete(props: AutocompleteProps) {
     setActiveIndex(-1);
   };
 
-  const setText = (value: string) => {
+  /** Typing waits for a pause before searching; a picked suggestion searches right away. */
+  const setText = (value: string, searchNow = false) => {
     text.setValue(value);
     props.onChange?.(value);
-    props.onSearchChange?.(value);
+    if (searchNow) serverSearch.now(value);
+    else serverSearch.schedule(value);
   };
 
   const submitOption = (option: SelectOption) => {
     if (option.disabled) return;
-    setText(option.label);
+    setText(option.label, true);
     props.onOptionSubmit?.(option);
     closeDropdown();
     inputRef?.focus();
@@ -191,7 +217,7 @@ export function Autocomplete(props: AutocompleteProps) {
         aria-controls={listboxId()}
         aria-expanded={open()}
         aria-activedescendant={
-          open() && !props.loading && activeIndex() >= 0
+          open() && !props.loading && !hint() && activeIndex() >= 0
             ? `${listboxId()}-${activeIndex()}`
             : undefined
         }
@@ -228,6 +254,7 @@ export function Autocomplete(props: AutocompleteProps) {
           loading={props.loading}
           empty={visibleOptions().length === 0}
           nothingFoundMessage={props.nothingFoundMessage}
+          hint={hint()}
         />
         <div
           id={listboxId()}
@@ -235,7 +262,7 @@ export function Autocomplete(props: AutocompleteProps) {
           role="listbox"
           aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
         >
-          <Show when={!props.loading}>
+          <Show when={!props.loading && !hint()}>
             <For each={visibleOptions()}>
               {(option, index) => (
                 <div

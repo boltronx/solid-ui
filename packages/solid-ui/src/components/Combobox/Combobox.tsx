@@ -12,21 +12,32 @@ export function ComboboxState(props: {
   loading?: boolean;
   empty: boolean;
   nothingFoundMessage?: string;
+  /** Replaces the other states, e.g. "Type at least 3 characters". */
+  hint?: string;
 }) {
   return (
     <div class="bx-Combobox-state" role="status">
-      <Show
-        when={props.loading}
-        fallback={<Show when={props.empty}>{props.nothingFoundMessage ?? "No options found"}</Show>}
-      >
-        {/* Hidden so the loader's own status does not repeat the text. */}
-        <span aria-hidden="true">
-          <Loader size="xs" />
-        </span>
-        Loading...
+      <Show when={!props.hint} fallback={props.hint}>
+        <Show
+          when={props.loading}
+          fallback={
+            <Show when={props.empty}>{props.nothingFoundMessage ?? "No options found"}</Show>
+          }
+        >
+          {/* Hidden so the loader's own status does not repeat the text. */}
+          <span aria-hidden="true">
+            <Loader size="xs" />
+          </span>
+          Loading...
+        </Show>
       </Show>
     </div>
   );
+}
+
+/** The hint shown while a server search waits for more characters. */
+export function minLengthHint(minLength: number | undefined, message: string | undefined): string {
+  return message ?? `Type at least ${minLength} characters`;
 }
 
 export function ComboboxOptionContent(props: {

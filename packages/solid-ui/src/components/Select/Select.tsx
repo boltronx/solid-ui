@@ -11,9 +11,10 @@ import {
 } from "solid-js";
 
 import { CheckIcon, ChevronDownIcon, CloseIcon } from "../../icons";
+import { createSearchCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
-import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
+import { ComboboxOptionContent, ComboboxState, minLengthHint } from "../Combobox/Combobox";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 import { InputSearch } from "../InputSearch/InputSearch";
@@ -67,8 +68,18 @@ export interface SelectProps extends FieldOwnProps, BaseProps {
   "aria-label"?: string;
   /** A single select reports a string ("" when cleared), a multiple select an array. */
   onChange?: (value: SelectValue, option: SelectOption | undefined) => void;
-  /** Set to search on the server: options are then shown as given, without local filtering. */
-  onSearchChange?: (value: string) => void;
+  /**
+   * Set to search on the server: options are then shown as given, without local filtering. Called
+   * once typing pauses (see `onSearchChangeDebounceMs`), and with "" when the dropdown closes. The
+   * signal aborts when a newer search starts, so pass it to fetch to drop stale responses.
+   */
+  onSearchChange?: (value: string, signal: AbortSignal) => void;
+  /** How long typing must pause before `onSearchChange` is called, in ms. Default 300; 0 calls on every keystroke. */
+  onSearchChangeDebounceMs?: number;
+  /** Search text shorter than this is not sent to `onSearchChange`, e.g. 3 for trigram search. */
+  onSearchChangeMinLength?: number;
+  /** Shown while the search is shorter than `onSearchChangeMinLength`. Default "Type at least N characters". */
+  searchMinLengthMessage?: string;
   /** Lets options load on demand, e.g. on the first open instead of on mount. */
   onDropdownOpen?: () => void;
   /** Called before the search is cleared, so a reset search can tell it came from closing. */
@@ -105,6 +116,16 @@ export function Select(props: SelectProps) {
   let dropdownRef: HTMLDivElement | undefined;
 
   onFormReset(() => rootRef, selection.reset);
+  const serverSearch = createSearchCall({
+    callback: () => props.onSearchChange,
+    delay: () => props.onSearchChangeDebounceMs,
+    minLength: () => props.onSearchChangeMinLength
+  });
+  // Too short to search the server: the dropdown asks for more instead of showing stale options.
+  const hint = () =>
+    props.onSearchChange && serverSearch.tooShort(search())
+      ? minLengthHint(props.onSearchChangeMinLength, props.searchMinLengthMessage)
+      : undefined;
 
   createEffect(() => {
     const loadedOptions = props.options;
@@ -142,7 +163,7 @@ export function Select(props: SelectProps) {
 
   // Focus stays on the field (or the search), so the highlighted option is announced through this.
   const activeDescendant = () =>
-    open() && !props.loading && activeIndex() < visibleOptions().length
+    open() && !props.loading && !hint() && activeIndex() < visibleOptions().length
       ? optionId(activeIndex())
       : undefined;
 
@@ -164,7 +185,7 @@ export function Select(props: SelectProps) {
     setOpen(false);
     props.onDropdownClose?.();
     setSearch("");
-    props.onSearchChange?.("");
+    serverSearch.now("");
   };
 
   const openDropdown = () => {
@@ -403,7 +424,7 @@ export function Select(props: SelectProps) {
               const value = event.currentTarget.value;
               setSearch(value);
               setActiveIndex(0);
-              props.onSearchChange?.(value);
+              serverSearch.schedule(value);
             }}
             onKeyDown={handleKeyDown}
           />
@@ -413,6 +434,7 @@ export function Select(props: SelectProps) {
             loading={props.loading}
             empty={visibleOptions().length === 0}
             nothingFoundMessage={props.nothingFoundMessage}
+            hint={hint()}
           />
           <div
             id={listboxId()}
@@ -422,7 +444,7 @@ export function Select(props: SelectProps) {
             aria-label={props.label ? undefined : props["aria-label"]}
             aria-multiselectable={isMultiple()}
           >
-            <Show when={!props.loading}>
+            <Show when={!props.loading && !hint()}>
               <For each={visibleOptions()}>
                 {(option, index) => {
                   const selected = () => selectedValues().includes(option.value);
