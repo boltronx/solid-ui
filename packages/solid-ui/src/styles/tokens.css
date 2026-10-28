@@ -88,9 +88,11 @@
   /* Behavior */
   --bx-disabled-opacity: 0.55;
   --bx-duration: 140ms;
+  /* Layers, lowest first: modals, dropdowns (above the modal they open from), messages, tooltips. */
   --bx-z-modal: 1000;
   --bx-z-popover: 1100;
   --bx-z-toast: 1200;
+  --bx-z-tooltip: 1300;
 }
 
 :root[data-theme="light"] {

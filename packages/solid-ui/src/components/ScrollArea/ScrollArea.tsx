@@ -17,6 +17,7 @@ export interface ScrollAreaProps extends BaseProps {
   type?: ScrollAreaType | ScrollAreaSplitType;
   scrollbarSize?: number;
   offsetScrollbars?: boolean;
+  /** The axes it scrolls on, with a scrollbar each; the other axis is left to the page. Default "xy". */
   scrollbars?: "x" | "y" | "xy";
   viewportStyle?: StyleProp;
   viewportClass?: string;
@@ -170,13 +171,6 @@ export function ScrollArea(props: ScrollAreaProps) {
     document.addEventListener("mouseup", onUp);
   };
 
-  const touchAction = () => {
-    const sb = props.scrollbars ?? "xy";
-    if (sb === "x") return "pan-x pinch-zoom";
-    if (sb === "y") return "pan-y pinch-zoom";
-    return "pan-x pan-y pinch-zoom";
-  };
-
   const markHoverActivity = () => {
     if (!inside() || resolvedType() !== "hover") return;
     setHovered(true);
@@ -215,9 +209,9 @@ export function ScrollArea(props: ScrollAreaProps) {
         aria-label={props["aria-label"]}
         style={mergeStyle(props.viewportStyle, {
           "padding-right": doOffset() && hasV() ? `${size() + off}px` : "",
-          "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : "",
-          "touch-action": touchAction()
+          "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : ""
         })}
+        data-scrollbars={props.scrollbars ?? "xy"}
       >
         {props.children}
       </div>

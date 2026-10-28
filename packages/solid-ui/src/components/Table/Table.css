@@ -4,6 +4,8 @@
   --bx-table-edge-shadow: color-mix(in oklab, black 35%, transparent);
 
   position: relative;
+  /* Sticky headers, fixed columns and the loading overlay layer inside the table only. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   min-width: 0;

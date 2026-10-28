@@ -91,3 +91,24 @@ describe("built stylesheets", () => {
     expect(componentsOnly).toContain("--bx-primary:");
   });
 });
+
+describe("layers", () => {
+  const layer = (name: string) =>
+    Number(new RegExp(`--bx-z-${name}:\\s*(\\d+)`).exec(tokens)?.[1] ?? Number.NaN);
+
+  it("stack modals, then dropdowns, messages and tooltips on top", () => {
+    const order = ["modal", "popover", "toast", "tooltip"].map(layer);
+    expect(order.every(Number.isFinite)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("use a --bx-z token, or a small number inside the component's own stacking context", () => {
+    const offenders = files.flatMap(file =>
+      [...readFileSync(file, "utf8").matchAll(/z-index:\s*([^;]+);/g)]
+        .map(match => match[1]!.trim())
+        .filter(value => !/^var\(--bx-z-[\w-]+\)$/.test(value) && !(Number(value) <= 10))
+        .map(value => `${file}: z-index ${value}`)
+    );
+    expect(offenders).toEqual([]);
+  });
+});

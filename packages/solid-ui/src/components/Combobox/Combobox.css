@@ -9,6 +9,8 @@
 
 .bx-Combobox-viewport {
   max-height: 18rem;
+  /* Like a native select's list: scrolling past its end doesn't move the page under it. */
+  overscroll-behavior: contain;
 }
 
 .bx-Combobox-options {

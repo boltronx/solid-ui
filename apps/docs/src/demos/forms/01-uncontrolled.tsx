@@ -56,23 +56,8 @@ export default function Demo() {
         <SimpleGrid minChildWidth="14rem" gap="md">
           <Input label="Name" name="name" defaultValue="Ada Lovelace" required />
           <Input label="Email" name="email" type="email" defaultValue="ada@example.com" />
-          <Select
-            label="Role"
-            name="role"
-            clearable
-            options={roles}
-            defaultValue="engineer"
-            required
-          />
-          <Select
-            label="Tags"
-            name="tags"
-            clearable
-            required
-            options={tags}
-            multiple
-            defaultValue={["remote"]}
-          />
+          <Select label="Role" name="role" options={roles} defaultValue="engineer" required />
+          <Select label="Tags" name="tags" options={tags} multiple defaultValue={["remote"]} />
           <InputNumber label="Salary" name="salary" currency="PHP" defaultValue={85000} min={0} />
           <DatePicker label="Start date" name="startDate" defaultValue="2026-11-02" required />
         </SimpleGrid>

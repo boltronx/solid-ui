@@ -57,7 +57,7 @@ const scaleTokens = [
   "--bx-radius-{sm,md,lg}",
   "--bx-control-height",
   "--bx-shadow-{sm,md}",
-  "--bx-z-{modal,popover,toast}"
+  "--bx-z-{modal,popover,toast,tooltip}"
 ];
 
 const overrideExample = `/* Your own CSS, outside the library's layer, so it always wins */

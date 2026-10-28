@@ -46,4 +46,20 @@ describe("IconButton", () => {
     await Promise.resolve();
     expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
   });
+
+  it("shows its tooltip in a portal on hover, so overflow:hidden parents can't clip it", async () => {
+    render(() => (
+      <div style={{ overflow: "hidden" }} data-testid="clipping-parent">
+        <IconButton tooltip="Settings">×</IconButton>
+      </div>
+    ));
+    expect(document.querySelector(".bx-IconButton-tooltip")).toBeNull();
+    await userEvent.hover(screen.getByRole("button", { name: "Settings" }));
+    const visible = document.querySelector(".bx-IconButton-tooltip")!;
+    expect(visible).toHaveTextContent("Settings");
+    expect(screen.getByTestId("clipping-parent")).not.toContainElement(visible as HTMLElement);
+
+    await userEvent.unhover(screen.getByRole("button", { name: "Settings" }));
+    expect(visible).toHaveAttribute("data-open", "false");
+  });
 });

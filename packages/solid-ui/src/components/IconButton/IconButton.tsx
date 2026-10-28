@@ -9,6 +9,7 @@ import {
 } from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
+import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 
 type NativeButtonProps = Omit<
   JSX.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -59,10 +60,15 @@ export function IconButton(props: IconButtonProps) {
     if (!hovered() && !focused()) setDismissed(false);
   };
 
+  // Shown on mouse hover (not a tap) and on keyboard focus, until Escape dismisses it.
+  const showTooltip = () => !!local.tooltip && !dismissed() && (hovered() || focused());
+  let buttonRef: HTMLButtonElement | undefined;
+
   const button = () => (
     <button
       {...others}
       ref={el => {
+        buttonRef = el;
         if (local.autoFocus) queueMicrotask(() => el.focus());
         local.ref?.(el);
       }}
@@ -98,9 +104,24 @@ export function IconButton(props: IconButtonProps) {
         }}
       >
         {button()}
-        <span id={tooltipId} role="tooltip" class="bx-IconButton-tooltip">
+        {/* What screen readers read; it stays next to the button so aria-describedby can point at it. */}
+        <span id={tooltipId} role="tooltip" class="bx-visually-hidden">
           {local.tooltip}
         </span>
+        {/*
+          What is seen, portaled to <body>: a Card, Table or ScrollArea that clips its overflow
+          can't cut it off, and it flips below the button when there's no room above.
+        */}
+        <FloatingPanel
+          open={showTooltip()}
+          target={() => buttonRef}
+          position="top"
+          gap={6}
+          exitDuration={140}
+          class="bx-IconButton-tooltip"
+        >
+          <span aria-hidden="true">{local.tooltip}</span>
+        </FloatingPanel>
       </span>
     </Show>
   );
