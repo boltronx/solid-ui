@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 
-import { ChevronDownIcon } from "../../icons/ChevronDownIcon";
+import { ChevronDownIcon } from "../../icons";
 import { type BaseProps, cx } from "../../utils/style";
 import { Button, type ButtonVariant } from "../Button/Button";
 import { Menu, MenuDropdown, type MenuPosition, MenuTarget } from "../Menu/Menu";
@@ -16,6 +16,8 @@ export interface SplitButtonProps extends BaseProps {
   type?: "button" | "submit" | "reset";
   leftSection?: JSX.Element;
   menuPosition?: MenuPosition;
+  /** Replaces the chevron on the menu half. */
+  chevronIcon?: JSX.Element;
   "aria-label"?: string;
   toggleAriaLabel?: string;
   onClick?: (event: MouseEvent) => void;
@@ -58,7 +60,7 @@ export function SplitButton(props: SplitButtonProps) {
           aria-label={props.toggleAriaLabel ?? "More options"}
           aria-haspopup="menu"
         >
-          <ChevronDownIcon ariaHidden />
+          {props.chevronIcon ?? <ChevronDownIcon />}
         </Button>
       </MenuTarget>
       <MenuDropdown>{props.dropdown}</MenuDropdown>

@@ -10,9 +10,7 @@ import {
   untrack
 } from "solid-js";
 
-import { CheckIcon } from "../../icons/CheckIcon";
-import { ChevronDownIcon } from "../../icons/ChevronDownIcon";
-import { CloseIcon } from "../../icons/CloseIcon";
+import { CheckIcon, ChevronDownIcon, CloseIcon } from "../../icons";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
@@ -60,6 +58,12 @@ export interface SelectProps extends FieldOwnProps, BaseProps {
   searchPlaceholder?: string;
   nothingFoundMessage?: string;
   renderOption?: (option: SelectOption) => JSX.Element;
+  /** Replaces the chevron at the end of the field. */
+  chevronIcon?: JSX.Element;
+  /** Replaces the cross on the clear button and on each chip's remove button. */
+  clearIcon?: JSX.Element;
+  /** Replaces the check next to picked options in the dropdown. */
+  checkIcon?: JSX.Element;
   "aria-label"?: string;
   /** A single select reports a string ("" when cleared), a multiple select an array. */
   onChange?: (value: SelectValue, option: SelectOption | undefined) => void;
@@ -325,7 +329,7 @@ export function Select(props: SelectProps) {
                       disabled={props.disabled}
                       onClick={event => removeValue(option.value, event)}
                     >
-                      <CloseIcon ariaHidden />
+                      {props.clearIcon ?? <CloseIcon />}
                     </button>
                   </Show>
                 </span>
@@ -341,7 +345,7 @@ export function Select(props: SelectProps) {
           fallback={
             <span class="bx-Select-chevron">
               <Show when={!props.loading || hasLoadedOptions()} fallback={<Loader size="xs" />}>
-                <ChevronDownIcon ariaHidden />
+                {props.chevronIcon ?? <ChevronDownIcon />}
               </Show>
             </span>
           }
@@ -357,7 +361,7 @@ export function Select(props: SelectProps) {
               clearValue();
             }}
           >
-            <CloseIcon ariaHidden />
+            {props.clearIcon ?? <CloseIcon />}
           </button>
         </Show>
       </div>
@@ -424,7 +428,7 @@ export function Select(props: SelectProps) {
                     >
                       <ComboboxOptionContent option={option} render={props.renderOption} />
                       <Show when={selected()}>
-                        <CheckIcon ariaHidden class="bx-Combobox-check" />
+                        <span class="bx-Combobox-check">{props.checkIcon ?? <CheckIcon />}</span>
                       </Show>
                     </div>
                   );

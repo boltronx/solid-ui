@@ -106,6 +106,6 @@ export const componentSections: Section[] = [
   {
     slug: "icons",
     title: "Icons",
-    description: "Bring your own icons; the docs use Tabler Icons."
+    description: "Bring your own icon set, and swap the icons components draw."
   }
 ];

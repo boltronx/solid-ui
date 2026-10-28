@@ -49,7 +49,7 @@ export type { LoaderProps } from "./components/Loader/Loader";
 export { Loader } from "./components/Loader/Loader";
 export type { MenuItemProps, MenuPosition, MenuProps } from "./components/Menu/Menu";
 export { Menu, MenuDivider, MenuDropdown, MenuItem, MenuTarget } from "./components/Menu/Menu";
-export type { MessageType } from "./components/Message/Message";
+export type { MessageOptions, MessageType } from "./components/Message/Message";
 export { message } from "./components/Message/Message";
 export type {
   ModalContext,

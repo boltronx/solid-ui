@@ -2,6 +2,7 @@ import type { JSX, ValidComponent } from "solid-js";
 import { children as resolveChildren, createEffect, createSignal, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
+import { ChevronRightIcon } from "../../icons";
 import { type BaseProps, cx } from "../../utils/style";
 
 export interface NavlinkProps extends BaseProps {
@@ -17,24 +18,14 @@ export interface NavlinkProps extends BaseProps {
   opened?: boolean;
   leftSection?: JSX.Element;
   rightSection?: JSX.Element;
+  /** Replaces the chevron shown on a link with nested links. */
+  chevronIcon?: JSX.Element;
   /** Indent of nested links, in px. */
   childrenOffset?: number;
   target?: string;
   rel?: string;
   onClick?: (event: MouseEvent) => void;
 }
-
-const ChevronRight = () => (
-  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" class="bx-Navlink-chevronIcon">
-    <path
-      d="M6 12L10 8L6 4"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-);
 
 export function Navlink(props: NavlinkProps) {
   const resolved = resolveChildren(() => props.children);
@@ -86,7 +77,7 @@ export function Navlink(props: NavlinkProps) {
         <span class="bx-Navlink-label">{props.label}</span>
         <Show when={hasChildren()} fallback={props.rightSection}>
           <span class="bx-Navlink-section bx-Navlink-chevron">
-            <ChevronRight />
+            {props.chevronIcon ?? <ChevronRightIcon />}
           </span>
         </Show>
       </Dynamic>

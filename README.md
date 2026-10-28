@@ -32,9 +32,10 @@ npm install @boltronx/solid-ui
 
 `solid-js` 1.9 or later is a peer dependency.
 
-The library ships no icon set. For icons, install
-[`@tabler/icons-solidjs`](https://tabler.io/icons) or any library that renders an `<svg>`;
-buttons, inputs and menus size them to fit.
+The library ships no icon set. Use any library that renders an `<svg>`, such as
+[`@tabler/icons-solidjs`](https://tabler.io/icons); buttons, inputs and menus size them to fit.
+The few icons the components draw themselves (chevrons, clear buttons, the password eye) can be
+swapped with props like `chevronIcon` and `clearIcon`, so they match your set.
 
 ## Setup
 

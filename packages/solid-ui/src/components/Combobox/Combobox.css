@@ -53,10 +53,16 @@
 }
 
 .bx-Combobox-check {
+  display: inline-flex;
   flex: 0 0 auto;
   width: 1rem;
   height: 1rem;
   color: var(--bx-primary);
+
+  > svg {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .bx-Combobox-state {

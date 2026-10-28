@@ -3,13 +3,14 @@ import {
   createMemo,
   createSignal,
   For,
+  type JSX,
   Match,
   onCleanup,
   splitProps,
   Switch
 } from "solid-js";
 
-import { CloseIcon } from "../../icons/CloseIcon";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "../../icons";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
 import type { FieldOwnProps } from "../Field/Field";
@@ -70,6 +71,14 @@ export interface DatePickerProps extends FieldOwnProps, BaseProps {
   format?: Intl.DateTimeFormatOptions;
   /** 0 is Sunday, 1 is Monday. Default 0. */
   firstDayOfWeek?: number;
+  /** Replaces the calendar shown at the end of the field while it has no clear button. */
+  calendarIcon?: JSX.Element;
+  /** Replaces the cross on the clear button. */
+  clearIcon?: JSX.Element;
+  /** Replaces the arrow that pages back in the calendar. */
+  previousIcon?: JSX.Element;
+  /** Replaces the arrow that pages forward in the calendar. */
+  nextIcon?: JSX.Element;
   "aria-label"?: string;
   /** Receives the picked date as YYYY-MM-DD, or "" when cleared. */
   onChange?: (value: string) => void;
@@ -308,15 +317,12 @@ export function DatePicker(props: DatePickerProps) {
                     commit("");
                   }}
                 >
-                  <CloseIcon ariaHidden />
+                  {props.clearIcon ?? <CloseIcon />}
                 </button>
               )
             }
           ) : (
-            <svg class="bx-DatePicker-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="4" y="5" width="16" height="16" rx="2" />
-              <path d="M16 3v4M8 3v4M4 11h16" />
-            </svg>
+            <span class="bx-DatePicker-icon">{props.calendarIcon ?? <CalendarIcon />}</span>
           )
         }
       />
@@ -342,9 +348,7 @@ export function DatePicker(props: DatePickerProps) {
               aria-label={pageLabel("Previous")}
               onClick={() => page(-1)}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M15 6l-6 6 6 6" />
-              </svg>
+              {props.previousIcon ?? <ChevronLeftIcon />}
             </button>
             <button
               type="button"
@@ -361,9 +365,7 @@ export function DatePicker(props: DatePickerProps) {
               aria-label={pageLabel("Next")}
               onClick={() => page(1)}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
+              {props.nextIcon ?? <ChevronRightIcon />}
             </button>
           </div>
           <Switch>

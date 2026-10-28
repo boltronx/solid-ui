@@ -1,13 +1,16 @@
-import { createEffect, createSignal, splitProps, untrack } from "solid-js";
+import { createEffect, createSignal, type JSX, splitProps, untrack } from "solid-js";
 
-import { CloseIcon } from "../../icons/CloseIcon";
+import { CloseIcon } from "../../icons";
 import { onFormReset } from "../../utils/form";
 import { Input, type InputProps } from "../Input/Input";
 
-export type InputSearchProps = Omit<InputProps, "type" | "rightSection" | "inputMode">;
+export interface InputSearchProps extends Omit<InputProps, "type" | "rightSection" | "inputMode"> {
+  /** Replaces the cross on the clear button. */
+  clearIcon?: JSX.Element;
+}
 
 export function InputSearch(props: InputSearchProps) {
-  const [local, inputProps] = splitProps(props, ["ref", "inputClass"]);
+  const [local, inputProps] = splitProps(props, ["ref", "inputClass", "clearIcon"]);
   const [hasValue, setHasValue] = createSignal(
     untrack(() => String(inputProps.value ?? inputProps.defaultValue ?? "").length > 0)
   );
@@ -54,7 +57,7 @@ export function InputSearch(props: InputSearchProps) {
                   tabindex={-1}
                   onClick={clear}
                 >
-                  <CloseIcon ariaHidden />
+                  {local.clearIcon ?? <CloseIcon />}
                 </button>
               )
             }

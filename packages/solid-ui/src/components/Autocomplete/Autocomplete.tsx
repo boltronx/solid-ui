@@ -10,7 +10,7 @@ import {
   splitProps
 } from "solid-js";
 
-import { ChevronDownIcon } from "../../icons/ChevronDownIcon";
+import { ChevronDownIcon } from "../../icons";
 import { createControllableSignal, onFormReset } from "../../utils/form";
 import { ComboboxOptionContent, ComboboxState } from "../Combobox/Combobox";
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
@@ -41,6 +41,8 @@ export interface AutocompleteProps extends Omit<
   loading?: boolean;
   nothingFoundMessage?: string;
   renderOption?: (option: SelectOption) => JSX.Element;
+  /** Replaces the chevron at the end of the field. */
+  chevronIcon?: JSX.Element;
   /** Called with the text on every keystroke and when a suggestion is picked. */
   onChange?: (value: string) => void;
   onOptionSubmit?: (option: SelectOption) => void;
@@ -56,6 +58,7 @@ export function Autocomplete(props: AutocompleteProps) {
     "loading",
     "nothingFoundMessage",
     "renderOption",
+    "chevronIcon",
     "onChange",
     "onOptionSubmit",
     "onSearchChange",
@@ -206,7 +209,7 @@ export function Autocomplete(props: AutocompleteProps) {
         rightSection={
           <span class="bx-Autocomplete-indicator" data-expanded={open() ? "" : undefined}>
             <Show when={!props.loading} fallback={<Loader size="xs" />}>
-              <ChevronDownIcon ariaHidden />
+              {props.chevronIcon ?? <ChevronDownIcon />}
             </Show>
           </span>
         }

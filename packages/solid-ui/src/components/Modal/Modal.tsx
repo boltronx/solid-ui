@@ -14,7 +14,7 @@ import {
 } from "solid-js";
 import { render } from "solid-js/web";
 
-import { CloseIcon } from "../../icons/CloseIcon";
+import { CloseIcon } from "../../icons";
 import { cx, type StyleProp } from "../../utils/style";
 import { ScrollArea, type ScrollAreaProps } from "../ScrollArea/ScrollArea";
 
@@ -152,6 +152,8 @@ function ModalHeader(
       title?: JSX.Element;
       /** Default true. */
       closable?: boolean;
+      /** Replaces the cross on the close button. */
+      closeIcon?: JSX.Element;
     }
 ) {
   const titleId = useContext(TitleIdContext);
@@ -174,7 +176,7 @@ function ModalHeader(
                   (props.close as ((reason: "close") => Promise<void>) | undefined)?.("close")
                 }
               >
-                <CloseIcon ariaHidden />
+                {props.closeIcon ?? <CloseIcon />}
               </button>
             </Show>
           </>
