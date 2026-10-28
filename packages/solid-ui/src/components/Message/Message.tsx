@@ -63,6 +63,25 @@ function ensureContainer() {
   render(() => <MessageContainer />, host);
 }
 
+interface QueuedMessage {
+  type: MessageType;
+  text: string;
+  icon: JSX.Element | undefined;
+  seconds: number;
+}
+
+const DEFAULT_LIMIT = 3;
+let limit = DEFAULT_LIMIT;
+/** Messages on screen and not yet leaving; at most `limit`. */
+let visibleCount = 0;
+/** Messages waiting for a free slot, oldest first. */
+const queue: QueuedMessage[] = [];
+
+/** Shows queued messages while there is room. */
+function drain() {
+  while (visibleCount < limit && queue.length > 0) display(queue.shift()!);
+}
+
 /** `options` is the seconds to show for, or an options object; defaultSeconds is used without. */
 function show(
   type: MessageType,
@@ -72,13 +91,20 @@ function show(
 ) {
   const { seconds = defaultSeconds, icon } =
     typeof options === "number" ? { seconds: options } : (options ?? {});
+  queue.push({ type, text, icon, seconds });
+  drain();
+}
+
+function display({ type, text, icon, seconds }: QueuedMessage) {
   ensureContainer();
   const id = ++idCounter;
+  visibleCount++;
 
   // Each message owns its exiting signal inside a root so it has a proper
   // reactive owner and is cleaned up when the message is removed.
   createRoot(dispose => {
     const [exiting, setExiting] = createSignal(false);
+    // The duration starts when the message appears, not while it waits in the queue.
     let remaining = Math.max(0, seconds * 1000);
     let startedAt = 0;
     let dismissTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +112,9 @@ function show(
     const dismiss = () => {
       dismissTimer = undefined;
       setExiting(true);
+      // Its slot frees as it starts leaving, so the next message comes in without a gap.
+      visibleCount--;
+      drain();
       setTimeout(() => {
         setMessages!(prev => prev.filter(m => m.id !== id));
         dispose();
@@ -113,9 +142,15 @@ function show(
   });
 }
 
+export interface MessageConfig {
+  /** How many messages show at once; more wait in a queue. Default 3. */
+  limit?: number;
+}
+
 /**
  * Short notifications at the top of the screen. The second argument is how long to show the
- * message, in seconds, or `{ seconds, icon }` to also replace its icon.
+ * message, in seconds, or `{ seconds, icon }` to also replace its icon. Up to three show at once
+ * (see `config`); the rest queue and each appears as an earlier one leaves.
  */
 export const message = {
   success(text: string, options?: number | MessageOptions) {
@@ -129,5 +164,10 @@ export const message = {
   },
   info(text: string, options?: number | MessageOptions) {
     show("info", text, options, 3);
+  },
+  /** Changes how many messages show at once. */
+  config(config: MessageConfig) {
+    if (config.limit !== undefined) limit = Math.max(1, Math.floor(config.limit));
+    drain();
   }
 };
