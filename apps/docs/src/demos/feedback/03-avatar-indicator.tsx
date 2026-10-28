@@ -1,7 +1,7 @@
 export const meta = { title: "Avatar and Indicator" };
 
 import { Avatar, Group, IconButton, Indicator } from "@boltronx/solid-ui";
-import { BellIcon } from "@boltronx/solid-ui/icons";
+import { IconBell } from "@tabler/icons-solidjs";
 
 export default function Demo() {
   return (
@@ -10,7 +10,7 @@ export default function Demo() {
       <Avatar label="Grace Hopper" color="var(--bx-success)" />
       <Indicator label={3}>
         <IconButton aria-label="Notifications" bordered>
-          <BellIcon />
+          <IconBell />
         </IconButton>
       </Indicator>
       <Indicator label={120} maxValue={99}>

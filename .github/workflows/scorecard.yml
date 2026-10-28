@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: "41 3 * * 1"
   branch_protection_rule:
+  # Run by hand after changing repo settings, instead of waiting for the weekly run.
+  workflow_dispatch:
 
 permissions: {}
 

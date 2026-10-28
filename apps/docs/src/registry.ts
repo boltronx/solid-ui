@@ -102,5 +102,10 @@ export const componentSections: Section[] = [
     slug: "navigation",
     title: "Navigation",
     description: "Navlink and ScrollArea."
+  },
+  {
+    slug: "icons",
+    title: "Icons",
+    description: "Bring your own icons; the docs use Tabler Icons."
   }
 ];

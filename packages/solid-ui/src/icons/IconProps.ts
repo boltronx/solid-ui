@@ -1,3 +1,5 @@
+// The icons in this folder are internal: only the components draw them, and they are not exported.
+// Apps that want icons install @tabler/icons-solidjs, which these are taken from (MIT, see LICENSE).
 import type { JSX } from "solid-js";
 
 export interface IconProps {

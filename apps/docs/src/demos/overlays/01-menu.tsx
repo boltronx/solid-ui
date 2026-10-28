@@ -15,7 +15,7 @@ import {
   MenuTarget,
   message
 } from "@boltronx/solid-ui";
-import { EditIcon, LogoutIcon, SettingsIcon, TrashIcon } from "@boltronx/solid-ui/icons";
+import { IconEdit, IconLogout, IconSettings, IconTrash } from "@tabler/icons-solidjs";
 
 export default function Demo() {
   return (
@@ -25,12 +25,12 @@ export default function Demo() {
           <Button>Actions</Button>
         </MenuTarget>
         <MenuDropdown>
-          <MenuItem leftSection={<EditIcon />} onClick={() => message.info("Edit")}>
+          <MenuItem leftSection={<IconEdit />} onClick={() => message.info("Edit")}>
             Edit
           </MenuItem>
           <MenuItem disabled>Archive</MenuItem>
           <MenuDivider />
-          <MenuItem danger leftSection={<TrashIcon />} onClick={() => message.error("Deleted")}>
+          <MenuItem danger leftSection={<IconTrash />} onClick={() => message.error("Deleted")}>
             Delete
           </MenuItem>
         </MenuDropdown>
@@ -40,8 +40,8 @@ export default function Demo() {
           <Avatar label="Ada Lovelace" />
         </MenuTarget>
         <MenuDropdown>
-          <MenuItem leftSection={<SettingsIcon />}>Settings</MenuItem>
-          <MenuItem leftSection={<LogoutIcon />}>Sign out</MenuItem>
+          <MenuItem leftSection={<IconSettings />}>Settings</MenuItem>
+          <MenuItem leftSection={<IconLogout />}>Sign out</MenuItem>
         </MenuDropdown>
       </Menu>
     </Group>

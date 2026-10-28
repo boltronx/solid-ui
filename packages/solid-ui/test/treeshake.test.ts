@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { describe, expect, it } from "vitest";
 
-const entry = fileURLToPath(new URL("../dist/index/index.js", import.meta.url));
+const entry = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 
 /** A class each component renders, so its presence in a bundle shows the component is there. */
 const markers: Record<string, string> = {

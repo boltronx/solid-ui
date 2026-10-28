@@ -2,7 +2,7 @@ import { defineConfig, type Options } from "tsup";
 import * as preset from "tsup-preset-solid";
 
 const presetOptions: preset.PresetOptions = {
-  entries: [{ entry: "src/index.tsx" }, { name: "icons", entry: "src/icons/index.tsx" }],
+  entries: [{ entry: "src/index.tsx" }],
   drop_console: false
 };
 

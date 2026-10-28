@@ -2,7 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { Button, Card, Code, Group, Stack, Text, Title } from "@boltronx/solid-ui";
-import { CheckIcon } from "@boltronx/solid-ui/icons";
+import { IconCheck } from "@tabler/icons-solidjs";
 
 import type { Demo as DemoData } from "./registry";
 
@@ -32,7 +32,7 @@ export function Demo(props: { demo: DemoData }) {
         </div>
         <Group justify="flex-end" gap="xs" class="docs-demo-toolbar">
           <Show when={showCode()}>
-            <Button variant="subtle" onClick={copy} leftSection={copied() ? <CheckIcon /> : null}>
+            <Button variant="subtle" onClick={copy} leftSection={copied() ? <IconCheck /> : null}>
               {copied() ? "Copied" : "Copy"}
             </Button>
           </Show>

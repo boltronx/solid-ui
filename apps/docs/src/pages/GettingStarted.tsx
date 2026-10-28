@@ -44,7 +44,8 @@ export function GettingStarted() {
       <Section title="Install">
         <Code block>npm install @boltronx/solid-ui</Code>
         <Text c="dimmed">
-          Requires <Code>solid-js</Code> 1.9 or later.
+          Requires <Code>solid-js</Code> 1.9 or later. For icons, add{" "}
+          <Code>@tabler/icons-solidjs</Code> or any library that renders an <Code>svg</Code>.
         </Text>
       </Section>
 

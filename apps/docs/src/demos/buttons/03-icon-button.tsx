@@ -4,19 +4,19 @@ export const meta = {
 };
 
 import { Group, IconButton } from "@boltronx/solid-ui";
-import { EditIcon, SettingsIcon, TrashIcon } from "@boltronx/solid-ui/icons";
+import { IconEdit, IconSettings, IconTrash } from "@tabler/icons-solidjs";
 
 export default function Demo() {
   return (
     <Group>
       <IconButton tooltip="Settings">
-        <SettingsIcon />
+        <IconSettings />
       </IconButton>
       <IconButton tooltip="Edit" color="primary" bordered>
-        <EditIcon />
+        <IconEdit />
       </IconButton>
       <IconButton tooltip="Delete" color="danger" bordered>
-        <TrashIcon />
+        <IconTrash />
       </IconButton>
     </Group>
   );
