@@ -85,6 +85,7 @@ export type { TextareaProps } from "./components/Textarea/Textarea";
 export { Textarea } from "./components/Textarea/Textarea";
 export type { TitleOrder, TitleProps } from "./components/Title/Title";
 export { Title } from "./components/Title/Title";
+export { focusFirstInvalid } from "./utils/form";
 export type {
   AlignItems,
   BaseProps,

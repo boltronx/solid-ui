@@ -1,4 +1,12 @@
-import { createUniqueId, type JSX, Show, splitProps } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  createUniqueId,
+  type JSX,
+  onCleanup,
+  Show,
+  splitProps
+} from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
 
@@ -30,6 +38,26 @@ export function IconButton(props: IconButtonProps) {
     "ref"
   ]);
   const tooltipId = `bx-tooltip-${createUniqueId()}`;
+  const [hovered, setHovered] = createSignal(false);
+  const [focused, setFocused] = createSignal(false);
+  const [dismissed, setDismissed] = createSignal(false);
+
+  // Escape hides a showing tooltip until the pointer leaves or focus moves (WCAG 1.4.13). It is
+  // handled first, so the same Escape does not also close a modal or menu behind the button.
+  createEffect(() => {
+    if (!local.tooltip || dismissed() || !(hovered() || focused())) return;
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      setDismissed(true);
+    };
+    document.addEventListener("keydown", dismissOnEscape);
+    onCleanup(() => document.removeEventListener("keydown", dismissOnEscape));
+  });
+
+  const reset = () => {
+    if (!hovered() && !focused()) setDismissed(false);
+  };
 
   const button = () => (
     <button
@@ -55,7 +83,20 @@ export function IconButton(props: IconButtonProps) {
 
   return (
     <Show when={local.tooltip} fallback={button()}>
-      <span class="bx-IconButton-wrapper">
+      <span
+        class="bx-IconButton-wrapper"
+        data-tooltip-dismissed={dismissed() ? "" : undefined}
+        onPointerEnter={event => event.pointerType === "mouse" && setHovered(true)}
+        onPointerLeave={() => {
+          setHovered(false);
+          reset();
+        }}
+        onFocusIn={event => setFocused((event.target as HTMLElement).matches(":focus-visible"))}
+        onFocusOut={() => {
+          setFocused(false);
+          reset();
+        }}
+      >
         {button()}
         <span id={tooltipId} role="tooltip" class="bx-IconButton-tooltip">
           {local.tooltip}

@@ -1,5 +1,6 @@
 // What screen reader and keyboard users get beyond markup rules: focus that moves where it should,
 // and announcements for changes that happen away from focus.
+import { createSignal } from "solid-js";
 import { screen, waitFor } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
@@ -8,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   Button,
   DatePicker,
+  focusFirstInvalid,
   IconButton,
   Indicator,
   Input,
@@ -19,6 +21,7 @@ import {
   modal,
   Pagination,
   Progress,
+  ScrollArea,
   Select,
   Textarea
 } from "../src";
@@ -211,5 +214,100 @@ describe("labels", () => {
   it("Progress takes an aria-label when it has no visible label", () => {
     renderInForm(() => <Progress value={70} aria-label="Upload progress" />);
     expect(screen.getByRole("progressbar", { name: "Upload progress" })).toBeInTheDocument();
+  });
+});
+
+describe("tooltip dismissal (WCAG 1.4.13)", () => {
+  it("hides on Escape until the pointer leaves", async () => {
+    renderInForm(() => (
+      <IconButton tooltip="Settings">
+        <svg aria-hidden="true" />
+      </IconButton>
+    ));
+    const wrapper = screen.getByRole("button", { name: "Settings" }).parentElement!;
+    await userEvent.hover(wrapper);
+    await userEvent.keyboard("{Escape}");
+    expect(wrapper).toHaveAttribute("data-tooltip-dismissed");
+
+    await userEvent.unhover(wrapper);
+    expect(wrapper).not.toHaveAttribute("data-tooltip-dismissed");
+  });
+
+  it("takes the first Escape inside a modal, leaving the modal open", async () => {
+    void modal.open({
+      content: ctx => (
+        <Modal>
+          <Modal.Header title="Tools" {...ctx} />
+          <Modal.Body>
+            <IconButton tooltip="Settings">
+              <svg aria-hidden="true" />
+            </IconButton>
+          </Modal.Body>
+        </Modal>
+      )
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Tools" });
+    await userEvent.hover(screen.getByRole("button", { name: "Settings" }).parentElement!);
+
+    await userEvent.keyboard("{Escape}");
+    // Not even starting to close: the exit transition sets data-exiting right away.
+    expect(dialog.closest(".bx-Modal-wrap")).not.toHaveAttribute("data-exiting");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  });
+});
+
+describe("field errors", () => {
+  it("speak when they appear, and link to the field only while there is one", async () => {
+    const [error, setError] = createSignal<string>();
+    renderInForm(() => <Input label="Email" error={error()} />);
+    const input = screen.getByLabelText("Email");
+    const region = input.closest(".bx-Field")!.querySelector(".bx-Field-error")!;
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toBeEmptyDOMElement();
+    expect(input).not.toHaveAttribute("aria-describedby");
+
+    setError("Enter a valid email");
+    expect(region).toHaveTextContent("Enter a valid email");
+    expect(input).toHaveAccessibleDescription("Enter a valid email");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("focusFirstInvalid moves focus to the first invalid field after a failed submit", async () => {
+    const [errors, setErrors] = createSignal<Record<string, string>>({});
+    const { form } = renderInForm(() => (
+      <>
+        <Input label="Name" />
+        <Select
+          label="Country"
+          options={[{ value: "ph", label: "Philippines" }]}
+          error={errors().country}
+        />
+        <Input label="Email" error={errors().email} />
+      </>
+    ));
+    expect(await focusFirstInvalid(form)).toBeUndefined();
+
+    setErrors({ country: "Pick a country", email: "Enter a valid email" });
+    const focused = await focusFirstInvalid(form);
+    expect(focused).toBe(screen.getByRole("combobox", { name: "Country" }));
+    expect(focused).toHaveFocus();
+  });
+});
+
+describe("ScrollArea focusable", () => {
+  it("becomes a named Tab stop only when asked", async () => {
+    renderInForm(() => (
+      <>
+        <ScrollArea height={80}>
+          <p>Plain</p>
+        </ScrollArea>
+        <ScrollArea height={80} focusable aria-label="Terms of service">
+          <p>Terms</p>
+        </ScrollArea>
+      </>
+    ));
+    await userEvent.tab();
+    expect(screen.getByRole("region", { name: "Terms of service" })).toHaveFocus();
   });
 });

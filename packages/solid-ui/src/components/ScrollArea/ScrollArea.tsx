@@ -21,6 +21,14 @@ export interface ScrollAreaProps extends BaseProps {
   viewportStyle?: StyleProp;
   viewportClass?: string;
   viewportRef?: (el: HTMLDivElement) => void;
+  /**
+   * Makes the scrolling area a Tab stop, so keyboard users can scroll it with the arrow keys in
+   * browsers that don't do this for them (Safari, older Chrome). Use it for content with nothing
+   * focusable inside, such as a block of terms; give it an `aria-label` too.
+   */
+  focusable?: boolean;
+  /** Names the area for screen readers; needed with `focusable`. */
+  "aria-label"?: string;
   onChange?: (pos: { x: number; y: number }) => void;
 }
 
@@ -202,6 +210,9 @@ export function ScrollArea(props: ScrollAreaProps) {
           props.viewportRef?.(el);
         }}
         class={cx("bx-ScrollArea-viewport", props.viewportClass)}
+        tabindex={props.focusable ? 0 : undefined}
+        role={props.focusable ? "region" : undefined}
+        aria-label={props["aria-label"]}
         style={mergeStyle(props.viewportStyle, {
           "padding-right": doOffset() && hasV() ? `${size() + off}px` : "",
           "padding-bottom": doOffset() && hasHoriz() ? `${size() + off}px` : "",

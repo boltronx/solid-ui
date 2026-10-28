@@ -27,6 +27,10 @@
   margin: 0;
   font-size: var(--bx-font-size-xs);
   color: var(--bx-danger);
+
+  &:empty {
+    display: none;
+  }
 }
 
 /* The shared control look for inputs, textareas and select triggers */

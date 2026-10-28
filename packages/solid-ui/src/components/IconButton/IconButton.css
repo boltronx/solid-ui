@@ -95,4 +95,9 @@
   .bx-IconButton:focus-visible + & {
     opacity: 1;
   }
+
+  /* After the rules above, so a dismissed tooltip stays hidden while hovered or focused. */
+  .bx-IconButton-wrapper[data-tooltip-dismissed] > & {
+    opacity: 0;
+  }
 }

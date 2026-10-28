@@ -292,6 +292,9 @@ describe("accessibility (axe)", () => {
         <ScrollArea height={100}>
           <Text>Scrollable content</Text>
         </ScrollArea>
+        <ScrollArea height={100} focusable aria-label="Terms of service">
+          <Text>Long terms</Text>
+        </ScrollArea>
       </Stack>
     )));
 });

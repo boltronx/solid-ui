@@ -51,3 +51,18 @@ export function createControllableSignal<T>(options: {
   const reset = () => setValue(untrack(options.defaultValue));
   return { value, setValue, reset, isControlled };
 }
+
+/**
+ * Moves focus to the first field marked invalid, so after a failed submit a screen reader reads
+ * that field, "invalid" and its error, and a keyboard user lands where the fix is needed. Call it
+ * once the errors are set; it waits a microtask so they have rendered. Resolves with the field it
+ * focused, or undefined when every field is valid.
+ */
+export async function focusFirstInvalid(
+  root: ParentNode = document
+): Promise<HTMLElement | undefined> {
+  await Promise.resolve();
+  const field = root.querySelector<HTMLElement>('[aria-invalid="true"]:not([disabled])');
+  field?.focus();
+  return field ?? undefined;
+}
