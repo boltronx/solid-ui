@@ -47,7 +47,12 @@ export function Pagination(props: PaginationProps) {
         when={!props.compact}
         fallback={
           <span class="bx-Pagination-status">
-            {COUNT_FORMAT.format(props.page)} / {COUNT_FORMAT.format(totalPages())}
+            <span aria-hidden="true">
+              {COUNT_FORMAT.format(props.page)} / {COUNT_FORMAT.format(totalPages())}
+            </span>
+            <span class="bx-visually-hidden">
+              Page {COUNT_FORMAT.format(props.page)} of {COUNT_FORMAT.format(totalPages())}
+            </span>
           </span>
         }
       >

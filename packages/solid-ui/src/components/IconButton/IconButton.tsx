@@ -44,7 +44,10 @@ export function IconButton(props: IconButtonProps) {
       data-color={local.color ?? "default"}
       data-bordered={local.bordered ? "" : undefined}
       aria-label={others["aria-label"] ?? local.tooltip}
-      aria-describedby={local.tooltip ? tooltipId : others["aria-describedby"]}
+      // The tooltip already names the button; it only describes it when aria-label names it.
+      aria-describedby={
+        local.tooltip && others["aria-label"] ? tooltipId : others["aria-describedby"]
+      }
     >
       {local.children}
     </button>

@@ -1,4 +1,5 @@
 import type { JSX } from "solid-js";
+import { Show } from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
 
@@ -10,6 +11,11 @@ export interface IndicatorProps extends BaseProps {
   color?: string;
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   maxValue?: number;
+  /**
+   * What the badge means, read instead of its bare content, e.g. "3 unread notifications".
+   * Without it a screen reader hears only "3".
+   */
+  "aria-label"?: string;
 }
 
 export function Indicator(props: IndicatorProps) {
@@ -30,7 +36,10 @@ export function Indicator(props: IndicatorProps) {
         style={props.color ? { background: props.color } : undefined}
         hidden={displayLabel() === undefined}
       >
-        {displayLabel()}
+        <span aria-hidden={props["aria-label"] ? "true" : undefined}>{displayLabel()}</span>
+        <Show when={props["aria-label"]}>
+          <span class="bx-visually-hidden">{props["aria-label"]}</span>
+        </Show>
       </div>
     </div>
   );

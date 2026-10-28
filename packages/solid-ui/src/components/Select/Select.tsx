@@ -84,6 +84,7 @@ export function Select(props: SelectProps) {
   const generatedId = createUniqueId();
   const controlId = () => props.id ?? `bx-select-${generatedId}`;
   const listboxId = () => `${controlId()}-listbox`;
+  const optionId = (index: number) => `${listboxId()}-${index}`;
   // The combobox is a div, which a <label for> cannot name, so the label is linked by id instead.
   const labelId = () => `${controlId()}-label`;
   const isMultiple = () => props.multiple === true;
@@ -138,6 +139,12 @@ export function Select(props: SelectProps) {
       `${option.label} ${option.description ?? ""}`.toLocaleLowerCase().includes(query)
     );
   });
+
+  // Focus stays on the field (or the search), so the highlighted option is announced through this.
+  const activeDescendant = () =>
+    open() && !props.loading && activeIndex() < visibleOptions().length
+      ? optionId(activeIndex())
+      : undefined;
 
   const showsChips = () => isMultiple() && !props.ellipsis;
 
@@ -297,6 +304,7 @@ export function Select(props: SelectProps) {
         aria-invalid={props.error ? true : undefined}
         aria-controls={listboxId()}
         aria-expanded={open()}
+        aria-activedescendant={activeDescendant()}
         aria-haspopup="listbox"
         aria-disabled={props.disabled}
         aria-readonly={isReadOnly()}
@@ -389,6 +397,8 @@ export function Select(props: SelectProps) {
             value={search()}
             placeholder={props.searchPlaceholder ?? "Search..."}
             aria-label="Search options"
+            aria-controls={listboxId()}
+            aria-activedescendant={activeDescendant()}
             onInput={event => {
               const value = event.currentTarget.value;
               setSearch(value);
@@ -399,23 +409,26 @@ export function Select(props: SelectProps) {
           />
         </Show>
         <ScrollArea class="bx-Combobox-scroll" viewportClass="bx-Combobox-viewport" scrollbars="y">
+          <ComboboxState
+            loading={props.loading}
+            empty={visibleOptions().length === 0}
+            nothingFoundMessage={props.nothingFoundMessage}
+          />
           <div
             id={listboxId()}
             class="bx-Combobox-options"
             role="listbox"
             aria-labelledby={props.label ? labelId() : undefined}
+            aria-label={props.label ? undefined : props["aria-label"]}
             aria-multiselectable={isMultiple()}
           >
-            <ComboboxState
-              loading={props.loading}
-              empty={visibleOptions().length === 0}
-              nothingFoundMessage={props.nothingFoundMessage}
-            >
+            <Show when={!props.loading}>
               <For each={visibleOptions()}>
                 {(option, index) => {
                   const selected = () => selectedValues().includes(option.value);
                   return (
                     <div
+                      id={optionId(index())}
                       class="bx-Combobox-option"
                       data-active={index() === activeIndex() ? "" : undefined}
                       data-selected={selected() ? "" : undefined}
@@ -434,7 +447,7 @@ export function Select(props: SelectProps) {
                   );
                 }}
               </For>
-            </ComboboxState>
+            </Show>
           </div>
         </ScrollArea>
       </FloatingPanel>

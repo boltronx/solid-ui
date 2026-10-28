@@ -73,3 +73,7 @@
   min-height: 3.25rem;
   color: var(--bx-text-dimmed);
 }
+
+.bx-Combobox-state:empty {
+  display: none;
+}

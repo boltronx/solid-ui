@@ -63,6 +63,14 @@ export function Textarea(props: TextareaProps) {
   const [characterCount, setCharacterCount] = createSignal(
     untrack(() => String(local.value ?? local.defaultValue ?? "").length)
   );
+  /** "N characters left" once within a tenth of maxLength (at least 10), else nothing. */
+  const remainingAnnouncement = () => {
+    if (rest.maxLength === undefined) return "";
+    const max = Number(rest.maxLength);
+    const left = Math.max(0, max - characterCount());
+    if (left > Math.max(10, max / 10)) return "";
+    return `${left} ${left === 1 ? "character" : "characters"} left`;
+  };
   let textarea: HTMLTextAreaElement | undefined;
 
   /** Sizes the box to its content, borders included since the box is border-box. */
@@ -156,10 +164,16 @@ export function Textarea(props: TextareaProps) {
         style={{ resize: local.resize ?? "none" }}
       />
       {local.showCount ? (
-        <div class="bx-Textarea-count" aria-live="polite">
-          {characterCount()}
-          {rest.maxLength !== undefined ? `/${rest.maxLength}` : null}
-        </div>
+        <>
+          {/* Read out only near the limit, not as "12 slash 200" on every keystroke. */}
+          <div class="bx-Textarea-count" aria-hidden="true">
+            {characterCount()}
+            {rest.maxLength !== undefined ? `/${rest.maxLength}` : null}
+          </div>
+          <span class="bx-visually-hidden" aria-live="polite">
+            {remainingAnnouncement()}
+          </span>
+        </>
       ) : null}
     </Field>
   );

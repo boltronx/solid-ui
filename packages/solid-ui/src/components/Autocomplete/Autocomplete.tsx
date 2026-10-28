@@ -191,7 +191,9 @@ export function Autocomplete(props: AutocompleteProps) {
         aria-controls={listboxId()}
         aria-expanded={open()}
         aria-activedescendant={
-          open() && activeIndex() >= 0 ? `${listboxId()}-${activeIndex()}` : undefined
+          open() && !props.loading && activeIndex() >= 0
+            ? `${listboxId()}-${activeIndex()}`
+            : undefined
         }
         ref={element => {
           inputRef = element;
@@ -222,12 +224,18 @@ export function Autocomplete(props: AutocompleteProps) {
         class="bx-Dropdown bx-Combobox-dropdown"
         onClick={event => event.stopPropagation()}
       >
-        <div id={listboxId()} class="bx-Combobox-options" role="listbox">
-          <ComboboxState
-            loading={props.loading}
-            empty={visibleOptions().length === 0}
-            nothingFoundMessage={props.nothingFoundMessage}
-          >
+        <ComboboxState
+          loading={props.loading}
+          empty={visibleOptions().length === 0}
+          nothingFoundMessage={props.nothingFoundMessage}
+        />
+        <div
+          id={listboxId()}
+          class="bx-Combobox-options"
+          role="listbox"
+          aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
+        >
+          <Show when={!props.loading}>
             <For each={visibleOptions()}>
               {(option, index) => (
                 <div
@@ -246,7 +254,7 @@ export function Autocomplete(props: AutocompleteProps) {
                 </div>
               )}
             </For>
-          </ComboboxState>
+          </Show>
         </div>
       </FloatingPanel>
     </>

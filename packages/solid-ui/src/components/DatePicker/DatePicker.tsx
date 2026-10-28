@@ -2,6 +2,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  createUniqueId,
   For,
   type JSX,
   Match,
@@ -92,6 +93,7 @@ export interface DatePickerProps extends FieldOwnProps, BaseProps {
 export function DatePicker(props: DatePickerProps) {
   const [local, field] = splitProps(props, ["class", "style"]);
   const isReadOnly = useReadOnly(() => props.readOnly === true);
+  const dialogId = `bx-datepicker-${createUniqueId()}`;
   const date = createControllableSignal<string>({
     value: () => props.value,
     defaultValue: () => props.defaultValue ?? ""
@@ -267,6 +269,18 @@ export function DatePicker(props: DatePickerProps) {
     const decade = years();
     return `${decade[0]} – ${decade[decade.length - 1]}`;
   };
+  /**
+   * The highlighted date, read out as the arrow keys move it: focus stays in the field, so a
+   * screen reader would otherwise not hear it.
+   */
+  const activeAnnouncement = () => {
+    if (!open()) return "";
+    const iso = active();
+    if (level() === "decade") return iso.slice(0, 4);
+    if (level() === "year") return format(iso, formats().monthYear);
+    const notes = [iso === value() && "selected", outOfRange(iso) && "unavailable"].filter(Boolean);
+    return [format(iso, formats().full), ...notes].join(", ");
+  };
   const pageLabel = (direction: "Previous" | "Next") =>
     `${direction} ${{ month: "month", year: "year", decade: "decade" }[level()]}`;
 
@@ -297,8 +311,11 @@ export function DatePicker(props: DatePickerProps) {
         readOnly={field.readOnly}
         inputMode="none"
         autocomplete="off"
+        // A combobox that pops up a dialog: the ARIA pattern for a date field with a calendar.
+        role="combobox"
         aria-haspopup="dialog"
         aria-expanded={open()}
+        aria-controls={open() ? dialogId : undefined}
         inputClass="bx-DatePicker-input"
         ref={setInputRef}
         onKeyDown={handleKeyDown}
@@ -327,6 +344,9 @@ export function DatePicker(props: DatePickerProps) {
         }
       />
       <input type="hidden" name={field.name} value={value()} disabled={field.disabled} />
+      <span class="bx-visually-hidden" aria-live="polite" aria-atomic="true">
+        {activeAnnouncement()}
+      </span>
       <FloatingPanel
         open={open()}
         target={() => inputRef?.parentElement ?? undefined}
@@ -337,8 +357,9 @@ export function DatePicker(props: DatePickerProps) {
       >
         {/* Keeps focus in the input, so the keyboard keeps driving the calendar. */}
         <div
+          id={dialogId}
           role="dialog"
-          aria-label={field.label ? undefined : "Choose a date"}
+          aria-label="Choose a date"
           onMouseDown={event => event.preventDefault()}
         >
           <div class="bx-DatePicker-header">

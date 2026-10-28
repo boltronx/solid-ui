@@ -81,6 +81,39 @@ function resolvePlacement(position: ModalPosition | undefined): {
   return { placement: "center" };
 }
 
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Moves focus into a modal that just opened, unless something in it already took focus. */
+function focusModal(wrap: HTMLElement) {
+  if (wrap.contains(document.activeElement)) return;
+  const dialog = wrap.querySelector<HTMLElement>('[role="dialog"]');
+  (dialog ?? wrap.querySelector<HTMLElement>(TABBABLE))?.focus();
+}
+
+/** Keeps Tab and Shift+Tab inside the modal. */
+function trapTab(event: KeyboardEvent) {
+  if (event.key !== "Tab" || event.defaultPrevented) return;
+  const wrap = event.currentTarget as HTMLElement;
+  const items = Array.from(wrap.querySelectorAll<HTMLElement>(TABBABLE)).filter(
+    element => !element.closest("[hidden], [inert]")
+  );
+  const first = items[0];
+  const last = items.at(-1);
+  const active = document.activeElement;
+  if (!first || !last) {
+    event.preventDefault();
+    return;
+  }
+  if (event.shiftKey && (active === first || !items.includes(active as HTMLElement))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 let idCounter = 0;
 let getModals: (() => ModalItem[]) | undefined;
 let setModals: ((updater: (prev: ModalItem[]) => ModalItem[]) => void) | undefined;
@@ -107,6 +140,8 @@ function ModalContainer() {
               data-exiting={item.exiting() ? "" : undefined}
               style={placement.style}
               role="presentation"
+              ref={element => queueMicrotask(() => focusModal(element))}
+              onKeyDown={trapTab}
             >
               <div class="bx-Modal-overlay" onClick={() => item.requestDismiss("backdrop")} />
               {item.renderContent({ close: item.close, lock: item.lock, locked: item.locked })}
@@ -218,6 +253,8 @@ function ensureContainer() {
 function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissReason | undefined> {
   ensureContainer();
   const id = ++idCounter;
+  // Focus goes back here on close, as a dialog should.
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const resolvedOptions: ResolvedModalOptions<T> = {
     closeOnEscape: true,
     closeOnBackdrop: true,
@@ -247,6 +284,9 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
         requestAnimationFrame(() => {
           window.setTimeout(() => {
             setModals?.(prev => prev.filter(item => item.id !== id));
+            // Only when focus was lost with the modal, so a field the app focused keeps it.
+            const focusLost = !document.activeElement || document.activeElement === document.body;
+            if (focusLost && opener?.isConnected) opener.focus();
             resolve(value);
             dispose();
           }, 220);
