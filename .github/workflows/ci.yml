@@ -58,5 +58,10 @@ jobs:
       - name: Test
         run: pnpm test:coverage
 
+      # A real SolidStart build: the page renders on the server, and its form posts to a server
+      # action without JavaScript.
+      - name: Test with SolidStart (SSR and server actions)
+        run: pnpm test:start
+
       - name: Check the published package
         run: pnpm lint:package

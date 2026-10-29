@@ -89,8 +89,9 @@ export function Login() {
 
 ## Server-side rendering
 
-The components render on the server (SolidStart, or any SSR setup) with their values filled in,
-and hydrate without mismatches. The package ships a server build for the `node`, `deno` and
+The components render on the server with their values filled in, and hydrate without mismatches.
+Every build is checked against a SolidStart app, including a form that posts to a server action
+with JavaScript off; other SSR setups work the same way. The package ships a server build for the `node`, `deno` and
 `worker` conditions, so it works from `node_modules` without compiling it yourself; Solid-aware
 bundlers can also compile the JSX build. Dropdowns, tooltips, `modal` and `message` only render
 in the browser. `useColorScheme()` renders the default mode on the server and switches to the

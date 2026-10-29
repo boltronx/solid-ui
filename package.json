@@ -20,10 +20,11 @@
   },
   "scripts": {
     "dev": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter docs dev",
-    "dev:server": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter ssr-playground dev",
+    "dev:start": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter start-fixture dev",
     "build": "pnpm --filter @boltronx/solid-ui build && pnpm --filter docs build",
     "test": "pnpm --filter @boltronx/solid-ui test",
     "test:coverage": "pnpm --filter @boltronx/solid-ui test:coverage",
+    "test:start": "pnpm --filter start-fixture build && pnpm --filter start-fixture test",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "lint:package": "pnpm --filter @boltronx/solid-ui lint:package",
@@ -31,7 +32,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "spellcheck": "cspell . --no-progress --gitignore",
-    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm lint:package",
+    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm test:start && pnpm lint:package",
     "update-deps": "pnpm up -r -Li"
   },
   "devDependencies": {
