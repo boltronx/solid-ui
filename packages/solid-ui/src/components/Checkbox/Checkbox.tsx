@@ -1,11 +1,12 @@
 import type { JSX } from "solid-js";
-import { createUniqueId, splitProps } from "solid-js";
+import { createEffect, createUniqueId, splitProps } from "solid-js";
 
 import { afterFormReset, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
 
-export interface CheckboxProps extends BaseProps {
+/** What Checkbox and Switch share: both are an <input type="checkbox"> with a label. */
+export interface CheckboxBaseProps extends BaseProps {
   id?: string;
   name?: string;
   /** Submitted when checked. Default "on", like a native checkbox. */
@@ -19,29 +20,60 @@ export interface CheckboxProps extends BaseProps {
   required?: boolean;
   label?: JSX.Element;
   description?: JSX.Element;
-  /** "switch" renders a toggle switch. */
-  role?: "checkbox" | "switch";
+  /** Which side of the control the label goes on. Default "right". */
+  labelPosition?: "left" | "right";
   ref?: (el: HTMLInputElement) => void;
   onChange?: JSX.EventHandler<HTMLInputElement, Event>;
 }
 
-export function Checkbox(props: CheckboxProps) {
+export interface CheckboxProps extends CheckboxBaseProps {
+  /**
+   * Shows a dash for "some but not all", e.g. a select-all box over a partly picked list. It is
+   * only a look: `checked` still decides what submits, and a click clears it, so update it from
+   * `onChange`. Screen readers announce it as "mixed".
+   */
+  indeterminate?: boolean;
+}
+
+interface CheckboxControlProps extends CheckboxBaseProps {
+  variant: "checkbox" | "switch";
+  indeterminate?: boolean;
+  /** Extra attributes for the row, e.g. a switch's size. */
+  rootProps?: Record<`data-${string}`, string | undefined>;
+  /** Draws around the input, e.g. a switch's track and thumb. */
+  renderControl?: (input: JSX.Element) => JSX.Element;
+}
+
+/**
+ * The checkbox behind Checkbox and Switch. Both are an <input type="checkbox">, so they submit,
+ * reset and validate alike; a switch adds role="switch" and draws its own track around the input.
+ */
+export function CheckboxControl(props: CheckboxControlProps) {
   const [local, rest] = splitProps(props, [
     "class",
     "style",
     "id",
     "label",
     "description",
-    "role",
+    "variant",
     "readOnly",
     "defaultChecked",
+    "indeterminate",
+    "labelPosition",
+    "rootProps",
+    "renderControl",
     "ref"
   ]);
 
   const generatedId = createUniqueId();
-  const inputId = () => local.id ?? `bx-checkbox-${generatedId}`;
+  const inputId = () => local.id ?? `bx-${local.variant}-${generatedId}`;
   const isReadOnly = useReadOnly(() => local.readOnly === true);
   let input: HTMLInputElement | undefined;
+
+  // `indeterminate` is a DOM property with no HTML attribute, so it is set on the element.
+  createEffect(() => {
+    if (input) input.indeterminate = local.indeterminate === true;
+  });
 
   // A controlled box shows the parent's state, so a click or a reset is undone once it finishes.
   // A click has toggled the box before its events, so a microtask is late enough for it; a reset
@@ -57,13 +89,47 @@ export function Checkbox(props: CheckboxProps) {
     () => restore(rest.checked, afterFormReset)
   );
 
+  const control = (
+    <input
+      type="checkbox"
+      ref={el => {
+        input = el;
+        if (local.defaultChecked !== undefined) el.defaultChecked = local.defaultChecked;
+        local.ref?.(el);
+      }}
+      id={inputId()}
+      class={local.variant === "switch" ? "bx-Switch-input" : "bx-Checkbox-input"}
+      name={rest.name}
+      value={rest.value ?? "on"}
+      // Solid assigns `checked` after the ref, so uncontrolled boxes start from defaultChecked here.
+      checked={rest.checked ?? local.defaultChecked}
+      disabled={rest.disabled}
+      required={rest.required}
+      role={local.variant === "switch" ? "switch" : undefined}
+      aria-readonly={isReadOnly() || undefined}
+      aria-describedby={local.description ? `${inputId()}-description` : undefined}
+      onClick={event => {
+        if (isReadOnly()) event.preventDefault();
+      }}
+      onChange={event => {
+        // The click has cleared `indeterminate`; like `checked`, it stays what the parent says.
+        if (local.indeterminate) event.currentTarget.indeterminate = true;
+        rest.onChange?.(event);
+        // Read after onChange, so a parent that updates right away keeps the new state.
+        restore(rest.checked);
+      }}
+    />
+  );
+
   return (
     <div
-      class={cx("bx-Checkbox", local.class)}
+      {...local.rootProps}
+      class={cx("bx-Checkbox", local.variant === "switch" && "bx-Switch", local.class)}
       style={local.style}
       data-readonly={isReadOnly() ? "" : undefined}
       data-disabled={rest.disabled ? "" : undefined}
       data-align-start={local.description ? "" : undefined}
+      data-label-position={local.labelPosition === "left" ? "left" : undefined}
       onClick={event => {
         // The whole row toggles, not just the box and its label.
         if ((event.target as HTMLElement).closest("input, label")) return;
@@ -71,33 +137,7 @@ export function Checkbox(props: CheckboxProps) {
         input?.click();
       }}
     >
-      <input
-        type="checkbox"
-        ref={el => {
-          input = el;
-          if (local.defaultChecked !== undefined) el.defaultChecked = local.defaultChecked;
-          local.ref?.(el);
-        }}
-        id={inputId()}
-        class="bx-Checkbox-input"
-        name={rest.name}
-        value={rest.value ?? "on"}
-        // Solid assigns `checked` after the ref, so uncontrolled boxes start from defaultChecked here.
-        checked={rest.checked ?? local.defaultChecked}
-        disabled={rest.disabled}
-        required={rest.required}
-        role={local.role ?? "checkbox"}
-        aria-readonly={isReadOnly() || undefined}
-        aria-describedby={local.description ? `${inputId()}-description` : undefined}
-        onClick={event => {
-          if (isReadOnly()) event.preventDefault();
-        }}
-        onChange={event => {
-          rest.onChange?.(event);
-          // Read after onChange, so a parent that updates right away keeps the new state.
-          restore(rest.checked);
-        }}
-      />
+      {local.renderControl ? local.renderControl(control) : control}
       {local.label || local.description ? (
         <div class="bx-Checkbox-body">
           {local.label ? (
@@ -114,4 +154,9 @@ export function Checkbox(props: CheckboxProps) {
       ) : null}
     </div>
   );
+}
+
+/** A box to tick: submits `value` (default "on") under `name` when checked. */
+export function Checkbox(props: CheckboxProps) {
+  return <CheckboxControl {...props} variant="checkbox" />;
 }

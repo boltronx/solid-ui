@@ -120,8 +120,9 @@ describe("Select server search", () => {
     ));
     fireEvent.click(screen.getByRole("combobox", { name: "City" }));
     nextFrame();
-    const search = screen.getByRole("searchbox", { name: "Search options" });
+    // Looked up on each call: the dropdown, and the search in it, are created anew on every open.
     const type = (value: string) => {
+      const search = screen.getByRole("searchbox", { name: "Search options" });
       fireEvent.input(search, { target: { value } });
     };
     return { onSearchChange, type };

@@ -126,7 +126,6 @@ export function Textarea(props: TextareaProps) {
         {...rest}
         ref={el => {
           textarea = el;
-          if (local.defaultValue !== undefined) el.defaultValue = local.defaultValue;
           el.addEventListener("input", () => {
             setCharacterCount(el.value.length);
             fit();
@@ -156,13 +155,20 @@ export function Textarea(props: TextareaProps) {
         id={textareaId()}
         class="bx-Input-control bx-Textarea"
         value={local.value ?? undefined}
-        readOnly={isReadOnly()}
+        // Omitted rather than false: the server writes any readonly attribute, even "false".
+        readOnly={isReadOnly() || undefined}
         data-readonly={isReadOnly() ? "" : undefined}
         aria-invalid={field.error ? true : undefined}
         aria-describedby={describedBy(textareaId(), field)}
         rows={rest.rows ?? (local.autoSize ? 1 : undefined)}
         style={{ resize: local.resize ?? "none" }}
-      />
+      >
+        {/*
+          A textarea's text is its default: it fills an untouched box, is what a reset restores,
+          and, unlike a ref, is in the server's HTML.
+        */}
+        {local.value ?? local.defaultValue}
+      </textarea>
       {local.showCount ? (
         <>
           {/* Read out only near the limit, not as "12 slash 200" on every keystroke. */}

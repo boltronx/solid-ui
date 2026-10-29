@@ -20,6 +20,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter docs dev",
+    "dev:server": "pnpm --filter @boltronx/solid-ui build && pnpm --parallel --filter @boltronx/solid-ui --filter ssr-playground dev",
     "build": "pnpm --filter @boltronx/solid-ui build && pnpm --filter docs build",
     "test": "pnpm --filter @boltronx/solid-ui test",
     "test:coverage": "pnpm --filter @boltronx/solid-ui test:coverage",

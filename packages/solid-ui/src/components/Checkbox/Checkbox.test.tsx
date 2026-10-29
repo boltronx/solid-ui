@@ -41,8 +41,30 @@ describe("Checkbox", () => {
     expect(box).not.toBeChecked();
   });
 
-  it("renders a switch", () => {
-    renderInForm(() => <Checkbox label="Wi-Fi" role="switch" />);
-    expect(screen.getByRole("switch", { name: "Wi-Fi" })).toBeInTheDocument();
+  it("is announced as a checkbox", () => {
+    renderInForm(() => <Checkbox label="Agree" />);
+    expect(screen.getByRole("checkbox", { name: "Agree" })).not.toHaveAttribute("role");
+  });
+});
+
+describe("Checkbox options", () => {
+  it("shows the indeterminate dash, and puts it back after a click clears it", async () => {
+    const onChange = vi.fn();
+    renderInForm(() => <Checkbox label="All" checked={false} indeterminate onChange={onChange} />);
+    const box = screen.getByLabelText<HTMLInputElement>("All");
+    expect(box.indeterminate).toBe(true);
+    expect(box).toBePartiallyChecked();
+    await userEvent.click(box);
+    expect(onChange).toHaveBeenCalledOnce();
+    // The parent kept `indeterminate`, so it is still shown.
+    expect(box.indeterminate).toBe(true);
+  });
+
+  it("puts the label on the left", () => {
+    renderInForm(() => <Checkbox label="Agree" labelPosition="left" />);
+    expect(screen.getByLabelText("Agree").closest(".bx-Checkbox")).toHaveAttribute(
+      "data-label-position",
+      "left"
+    );
   });
 });

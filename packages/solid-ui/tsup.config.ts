@@ -2,7 +2,8 @@ import { defineConfig, type Options } from "tsup";
 import * as preset from "tsup-preset-solid";
 
 const presetOptions: preset.PresetOptions = {
-  entries: [{ entry: "src/index.tsx" }],
+  // server_entry adds dist/server.js, compiled for SSR, for the node, deno and worker conditions.
+  entries: [{ entry: "src/index.tsx", server_entry: true }],
   drop_console: false
 };
 

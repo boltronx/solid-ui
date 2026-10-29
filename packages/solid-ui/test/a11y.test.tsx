@@ -40,6 +40,7 @@ import {
   Skeleton,
   SplitButton,
   Stack,
+  Switch,
   Table,
   Text,
   Textarea,
@@ -146,7 +147,9 @@ describe("accessibility (axe)", () => {
     expectAccessible(() => (
       <>
         <Checkbox label="Remember me" description="For 30 days" />
-        <Checkbox label="Notifications" role="switch" defaultChecked />
+        <Switch label="Notifications" defaultChecked />
+        <Switch label="With labels" size="lg" onLabel="ON" offLabel="OFF" />
+        <Checkbox label="Some picked" indeterminate labelPosition="left" />
         <Checkbox label="Disabled" disabled />
       </>
     )));

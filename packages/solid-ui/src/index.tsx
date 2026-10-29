@@ -13,7 +13,7 @@ export type { ButtonProps, ButtonVariant } from "./components/Button/Button";
 export { Button } from "./components/Button/Button";
 export type { CardProps } from "./components/Card/Card";
 export { Card } from "./components/Card/Card";
-export type { CheckboxProps } from "./components/Checkbox/Checkbox";
+export type { CheckboxBaseProps, CheckboxProps } from "./components/Checkbox/Checkbox";
 export { Checkbox } from "./components/Checkbox/Checkbox";
 export type { CodeProps } from "./components/Code/Code";
 export { Code } from "./components/Code/Code";
@@ -21,6 +21,13 @@ export type { DatePickerProps } from "./components/DatePicker/DatePicker";
 export { DatePicker } from "./components/DatePicker/DatePicker";
 export { parseISODate, toISODate } from "./components/DatePicker/dates";
 export type { FieldOwnProps } from "./components/Field/Field";
+export type {
+  FlexBreakpoint,
+  FlexDirection,
+  FlexProps,
+  ResponsiveDirection
+} from "./components/Flex/Flex";
+export { Flex } from "./components/Flex/Flex";
 export type {
   FloatingPanelProps,
   FloatingPosition
@@ -77,6 +84,8 @@ export type { SplitButtonProps } from "./components/SplitButton/SplitButton";
 export { SplitButton } from "./components/SplitButton/SplitButton";
 export type { StackProps } from "./components/Stack/Stack";
 export { Stack } from "./components/Stack/Stack";
+export type { SwitchProps } from "./components/Switch/Switch";
+export { Switch } from "./components/Switch/Switch";
 export type { TableColumn, TablePagination, TableProps } from "./components/Table/Table";
 export { paginationSummary, Table } from "./components/Table/Table";
 export type { TextColor, TextProps } from "./components/Text/Text";

@@ -1,5 +1,6 @@
 import type { JSX } from "solid-js";
-import { createUniqueId, splitProps } from "solid-js";
+import { createMemo, createUniqueId, splitProps } from "solid-js";
+import { isServer } from "solid-js/web";
 
 import { keepControlledOnReset } from "../../utils/form";
 import { type BaseProps, type StyleProp } from "../../utils/style";
@@ -57,8 +58,10 @@ export function Input(props: InputProps) {
 
   const generatedId = createUniqueId();
   const inputId = () => local.id ?? `bx-input-${generatedId}`;
-  const left = () => resolveSection(local.leftSection);
-  const right = () => resolveSection(local.rightSection);
+  // Read once per change: a section passed as JSX is created anew on every read, and creating it
+  // more than once would also put the elements out of step with the server's while hydrating.
+  const left = createMemo(() => resolveSection(local.leftSection));
+  const right = createMemo(() => resolveSection(local.rightSection));
   const isReadOnly = useReadOnly(() => local.readOnly === true);
   let input: HTMLInputElement | undefined;
 
@@ -105,8 +108,11 @@ export function Input(props: InputProps) {
           id={inputId()}
           class={local.inputClass ? `bx-Input-control ${local.inputClass}` : "bx-Input-control"}
           style={local.inputStyle}
-          value={local.value ?? undefined}
-          readOnly={isReadOnly()}
+          // Refs don't run on the server, so there the default is written as the value attribute,
+          // which is what defaultValue is; the browser keeps it from the server's HTML.
+          value={local.value ?? (isServer ? local.defaultValue : undefined)}
+          // Omitted rather than false: the server writes any readonly attribute, even "false".
+          readOnly={isReadOnly() || undefined}
           data-readonly={isReadOnly() ? "" : undefined}
           aria-invalid={field.error ? true : undefined}
           aria-describedby={describedBy(inputId(), field)}

@@ -10,6 +10,7 @@ You need Node.js 24.22.1 (see `.nvmrc`) and pnpm 12 (pinned via `devEngines.pack
 ```sh
 pnpm install
 pnpm dev        # builds the library in watch mode and serves the docs at http://localhost:5173
+pnpm dev:server # the same, with a server-rendered, hydrated page at http://localhost:3000
 ```
 
 ## Project layout
@@ -21,6 +22,7 @@ packages/solid-ui/          the published library
   scripts/build-css.mjs     combines the CSS files into dist/styles.css and dist/components.css
 apps/docs/                  the documentation site (GitHub Pages)
   src/demos/<section>/      each demo is a file; the docs show its source next to it
+apps/ssr-playground/        a page rendered on the server and hydrated (`pnpm dev:server`)
 ```
 
 ## Conventions

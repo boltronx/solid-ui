@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { children, createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import { cx } from "../../utils/style";
@@ -115,7 +115,6 @@ export function FloatingPanel(props: FloatingPanelProps) {
   let panelRef: HTMLDivElement | undefined;
   let closeTimer: number | undefined;
   let rafId: number | undefined;
-  const resolvedChildren = children(() => props.children);
   const [mounted, setMounted] = createSignal(false);
   const [positioned, setPositioned] = createSignal(false);
   const [coords, setCoords] = createSignal<Coordinates>({
@@ -259,7 +258,11 @@ export function FloatingPanel(props: FloatingPanelProps) {
           }}
           onClick={event => props.onClick?.(event)}
         >
-          {resolvedChildren()}
+          {/*
+            Created only once open: made up front, the closed panel's content would be built while
+            hydrating, with no server HTML to match it.
+          */}
+          {props.children}
         </div>
       </Portal>
     </Show>

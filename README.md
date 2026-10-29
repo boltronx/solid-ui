@@ -87,6 +87,15 @@ export function Login() {
 }
 ```
 
+## Server-side rendering
+
+The components render on the server (SolidStart, or any SSR setup) with their values filled in,
+and hydrate without mismatches. The package ships a server build for the `node`, `deno` and
+`worker` conditions, so it works from `node_modules` without compiling it yourself; Solid-aware
+bundlers can also compile the JSX build. Dropdowns, tooltips, `modal` and `message` only render
+in the browser. `useColorScheme()` renders the default mode on the server and switches to the
+saved one after hydration; `colorSchemeScript()` in `<head>` keeps the page from flashing.
+
 ## Forms
 
 Each input works as uncontrolled or controlled:
