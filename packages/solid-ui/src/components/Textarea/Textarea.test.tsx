@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderInForm } from "../../../test/helpers";
+import { Button } from "../Button/Button";
 
 import { Textarea } from "./Textarea";
 
@@ -45,5 +46,54 @@ describe("Textarea", () => {
     expect(onSubmit).not.toHaveBeenCalled();
     enter({});
     expect(onSubmit).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Textarea submitOnEnter with a submit button", () => {
+  it("submits through the form's submit button, as Enter in a field does", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Textarea label="Message" submitOnEnter />
+        <Button type="submit" name="intent" value="send">
+          Send
+        </Button>
+      </>
+    ));
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]![0].submitter).toBe(screen.getByRole("button", { name: "Send" }));
+  });
+
+  it("doesn't send the form again while its submit button is loading", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Textarea label="Message" submitOnEnter />
+        <Button type="submit" loading>
+          Send
+        </Button>
+      </>
+    ));
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}{Enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Message")).toHaveValue("hello");
+  });
+
+  it("does nothing when the form's submit button is disabled", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Textarea label="Message" submitOnEnter />
+        <Button type="submit" disabled>
+          Send
+        </Button>
+      </>
+    ));
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

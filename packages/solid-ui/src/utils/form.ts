@@ -73,6 +73,24 @@ export function isCompositionKey(event: KeyboardEvent): boolean {
 }
 
 /**
+ * Submits `form` the way Enter in a text field does (implicit submission): by clicking its
+ * default button, its first submit button. That click is what a loading Button cancels, so a form
+ * that is still sending isn't sent again; a disabled default button means Enter does nothing.
+ * `form.requestSubmit()` would skip the button and submit regardless. A form without a submit
+ * button is submitted directly.
+ */
+export function submitImplicitly(form: HTMLFormElement) {
+  const defaultButton = Array.from(form.elements).find(
+    (element): element is HTMLButtonElement | HTMLInputElement =>
+      (element instanceof HTMLButtonElement && element.type === "submit") ||
+      (element instanceof HTMLInputElement &&
+        (element.type === "submit" || element.type === "image"))
+  );
+  if (!defaultButton) form.requestSubmit();
+  else if (!defaultButton.disabled) defaultButton.click();
+}
+
+/**
  * Moves focus to the first field marked invalid, so after a failed submit a screen reader reads
  * that field, "invalid" and its error, and a keyboard user lands where the fix is needed. Call it
  * once the errors are set; it waits a microtask so they have rendered. Resolves with the field it

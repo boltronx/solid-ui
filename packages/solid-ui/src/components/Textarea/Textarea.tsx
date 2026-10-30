@@ -12,7 +12,8 @@ import {
   afterFormReset,
   isCompositionKey,
   keepControlledOnReset,
-  onFormReset
+  onFormReset,
+  submitImplicitly
 } from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
@@ -143,7 +144,7 @@ export function Textarea(props: TextareaProps) {
             if (!local.submitOnEnter || event.key !== "Enter" || event.shiftKey) return;
             if (isCompositionKey(event)) return;
             event.preventDefault();
-            el.form?.requestSubmit();
+            if (el.form) submitImplicitly(el.form);
           });
           if (local.autoSize) {
             // Wrapping follows the width, which is unknown until the box is laid out and can change
