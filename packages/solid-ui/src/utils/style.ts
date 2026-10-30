@@ -51,6 +51,7 @@ function isContainedValue(value: string): boolean {
     const char = value[i];
     if (quote) {
       if (char === "\\") i++;
+      else if (char === "\n" || char === "\r" || char === "\f") return false;
       else if (char === quote) quote = undefined;
     } else if (char === '"' || char === "'") quote = char;
     // An escape outside quotes could hide a bracket from this count, e.g. `url(a\)`.
