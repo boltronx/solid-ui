@@ -1,4 +1,4 @@
-import { screen } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -19,6 +19,16 @@ describe("number helpers", () => {
     expect(parseNumber("1,234.5")).toBe(1234.5);
     expect(parseNumber("-")).toBeNull();
     expect(parseNumber("abc")).toBeNull();
+  });
+
+  it("reads commas only as thousands separators", () => {
+    expect(parseNumber("1,234,567.25")).toBe(1234567.25);
+    expect(parseNumber("-12,000")).toBe(-12000);
+    // A decimal comma, or a misplaced one, is invalid rather than silently dropped.
+    expect(parseNumber("1,5")).toBeNull();
+    expect(parseNumber("12,34")).toBeNull();
+    expect(parseNumber("1234,567")).toBeNull();
+    expect(parseNumber("1.234,56")).toBeNull();
   });
 });
 
@@ -56,6 +66,37 @@ describe("InputNumber", () => {
     await reset();
     expect(data().get("qty")).toBe("3");
     expect(input).toHaveValue("3");
+  });
+
+  it("never turns a decimal comma into a larger number", async () => {
+    const onChange = vi.fn();
+    const { data } = renderInForm(() => <InputNumber label="Qty" name="qty" onChange={onChange} />);
+    const input = screen.getByLabelText("Qty");
+    await userEvent.type(input, "1,5");
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledWith(null);
+    expect(data().get("qty")).toBe("");
+  });
+
+  it("refuses a pasted number with a decimal comma", async () => {
+    renderInForm(() => <InputNumber label="Qty" name="qty" />);
+    const input = screen.getByLabelText("Qty");
+    await userEvent.click(input);
+    await userEvent.paste("1.234,56");
+    expect(input).toHaveValue("");
+    await userEvent.paste("1,234.5");
+    expect(input).toHaveValue("1,234.5");
+  });
+
+  it("submits with a form it is outside of, through the form attribute", () => {
+    render(() => (
+      <>
+        <form id="order" data-testid="form" />
+        <InputNumber label="Qty" name="qty" form="order" defaultValue={4} />
+      </>
+    ));
+    const form = screen.getByTestId("form") as HTMLFormElement;
+    expect(new FormData(form).get("qty")).toBe("4");
   });
 
   it("submits an empty string when empty, like a native input", () => {

@@ -63,7 +63,20 @@ export interface TableProps<T> extends BaseProps {
    * Default 576; 0 never stacks.
    */
   stackBelow?: number;
+  /**
+   * Makes each row clickable, and a Tab stop that Enter activates. A screen reader reads a
+   * focused row's cells but can't tell that the row does anything, so give it a named control
+   * too: either `rowLabel`, or a link or button of your own in the row, e.g. on the order number:
+   * `render: order => <Anchor component="button" type="button" onClick={...}>{order.id}</Anchor>`.
+   * A click on a control inside a row goes to that control, not to `onRowClick`.
+   */
   onRowClick?: (row: T, event: MouseEvent | KeyboardEvent) => void;
+  /**
+   * Names what `onRowClick` does for a row, e.g. `order => \`Open order ${order.id}\``. Each row
+   * then gets a button with that name, unseen but announced, which keyboard and screen reader
+   * users reach instead of the row; the row stays clickable for the mouse.
+   */
+  rowLabel?: (row: T) => string;
 }
 
 const COUNT_FORMAT = /* @__PURE__ */ new Intl.NumberFormat("en-US");
@@ -185,6 +198,15 @@ export function Table<T>(props: TableProps<T>) {
 
   const isEmpty = () => props.data.length === 0;
 
+  const hasRowAction = () => !!props.onRowClick && !!props.rowLabel;
+  // The row action button goes in the first cell that the stacked layout still shows.
+  const actionColumn = createMemo(() =>
+    Math.max(
+      0,
+      columns().findIndex(column => column.stacked !== "hidden")
+    )
+  );
+
   return (
     <div
       ref={element => (root = element)}
@@ -237,7 +259,8 @@ export function Table<T>(props: TableProps<T>) {
                 <tr
                   class="bx-Table-tr"
                   data-clickable={props.onRowClick ? "" : undefined}
-                  tabindex={props.onRowClick ? 0 : undefined}
+                  // With a row action button, that button is the Tab stop; one per row is enough.
+                  tabindex={props.onRowClick && !hasRowAction() ? 0 : undefined}
                   onClick={event => {
                     // A click on a control inside the row (a link, a row action) is that
                     // control's, not the row's.
@@ -258,6 +281,15 @@ export function Table<T>(props: TableProps<T>) {
                         data-stacked-as={column.stacked ?? "label"}
                         style={stickyStyle(index(), column.fixed)}
                       >
+                        <Show when={hasRowAction() && index() === actionColumn()}>
+                          <button
+                            type="button"
+                            class="bx-visually-hidden bx-Table-rowAction"
+                            onClick={event => props.onRowClick?.(row, event)}
+                          >
+                            {props.rowLabel?.(row)}
+                          </button>
+                        </Show>
                         <Show when={stacked() && (column.stacked ?? "label") === "label"}>
                           <span class="bx-Table-label" aria-hidden="true">
                             {column.header}
@@ -286,10 +318,12 @@ export function Table<T>(props: TableProps<T>) {
 
       <Show when={pagination()}>
         {current => (
-          <Show when={!isEmpty()}>
+          // Kept on an empty page past the first (e.g. its last rows were deleted), so there is
+          // still a way back to the pages that have rows.
+          <Show when={!isEmpty() || current().page > 1}>
             <div class="bx-Table-footer">
-              <span class="bx-Table-summary">{paginationSummary(current())}</span>
-              <Show when={totalPages() > 1}>
+              <span class="bx-Table-summary">{isEmpty() ? "" : paginationSummary(current())}</span>
+              <Show when={totalPages() > 1 || current().page > 1}>
                 <Pagination
                   page={current().page}
                   totalPages={totalPages()}

@@ -63,6 +63,16 @@ export function createControllableSignal<T>(options: {
 }
 
 /**
+ * Whether a key press belongs to an IME composition, e.g. the Enter that confirms Japanese or
+ * Chinese text, so it must not submit. Safari sends that Enter after the composition has ended,
+ * with `isComposing` false, but still with keyCode 229.
+ */
+export function isCompositionKey(event: KeyboardEvent): boolean {
+  // keyCode is deprecated, but it is the only signal Safari gives.
+  return event.isComposing || event.keyCode === 229;
+}
+
+/**
  * Moves focus to the first field marked invalid, so after a failed submit a screen reader reads
  * that field, "invalid" and its error, and a keyboard user lands where the fix is needed. Call it
  * once the errors are set; it waits a microtask so they have rendered. Resolves with the field it

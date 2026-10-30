@@ -51,6 +51,16 @@ describe("DatePicker", () => {
     expect(screen.getByLabelText("Due date")).toHaveValue("Oct 20, 2026");
   });
 
+  it("opens from a click on its label, and closes from a click on the field", async () => {
+    renderInForm(() => <DatePicker label="Due date" />);
+    const field = screen.getByRole("combobox", { name: "Due date" });
+    await userEvent.click(screen.getByText("Due date"));
+    expect(field).toHaveAttribute("aria-expanded", "true");
+    expect(field).toHaveFocus();
+    await userEvent.click(field);
+    expect(field).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("navigates with the keyboard", async () => {
     const { data } = renderInForm(() => (
       <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />

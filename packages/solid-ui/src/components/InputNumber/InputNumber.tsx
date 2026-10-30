@@ -94,18 +94,26 @@ export function formatNumber(value: number | null | undefined, decimals?: Decima
   return formatter.format(stripFloatNoise(value));
 }
 
-/** Parses a typed or formatted number ("1,234.5"); empty or invalid text is null. */
+/**
+ * Parses a typed or formatted number ("1,234.5"); empty or invalid text is null. Commas must group
+ * thousands: "1,5" (a decimal comma) is invalid rather than read as 15.
+ */
 export function parseNumber(text: string): number | null {
-  const cleaned = text.replace(/,/g, "").trim();
+  const trimmed = text.trim();
+  if (trimmed.includes(",") && !/^-?\d{1,3}(,\d{3})+(\.\d*)?$/.test(trimmed)) return null;
+  const cleaned = trimmed.replace(/,/g, "");
   if (cleaned === "" || cleaned === "-") return null;
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
 function isWithinSafePrecision(text: string, maxDecimals: number): boolean {
-  const cleaned = text.replace(/,/g, "").trim();
+  const trimmed = text.trim();
+  // Commas only between digits of the whole part, where grouping goes; one may end the text
+  // while typing. So "1.234,56" (a decimal comma) is refused as it is typed or pasted.
+  if (!/^-?(\d+(,\d+)*,?)?(\.\d*)?$/.test(trimmed)) return false;
+  const cleaned = trimmed.replace(/,/g, "");
   if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return true;
-  if (!/^-?\d*(\.\d*)?$/.test(cleaned)) return false;
   const fraction = cleaned.split(".")[1];
   if (fraction && fraction.length > maxDecimals) return false;
   const digits = cleaned.replace(/[-.]/g, "").replace(/^0+/, "");
@@ -248,6 +256,8 @@ export function InputNumber(props: InputNumberProps) {
       <input
         type="hidden"
         name={local.name}
+        // This is the input that submits, so it joins a form named by `form` like the field does.
+        form={inputProps.form}
         value={submittedValue()}
         disabled={inputProps.disabled}
       />

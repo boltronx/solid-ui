@@ -55,6 +55,8 @@ interface ModalItem extends ModalContext<unknown> {
   id: number;
   renderContent: (ctx: ModalContext<unknown>) => JSX.Element;
   requestDismiss: (reason: Exclude<ModalDismissReason, "closeAll">) => void;
+  /** Ends the modal at once, without onBeforeClose: its host is going away. */
+  destroy: () => void;
   exiting: Accessor<boolean>;
   options: ResolvedModalOptions<unknown>;
 }
@@ -133,6 +135,8 @@ function ModalContainer() {
       getModals = undefined;
       setModals = undefined;
     }
+    // Its modals go with it, so their promises settle and their key listeners come off.
+    for (const item of modals()) item.destroy();
   });
 
   return (
@@ -297,10 +301,13 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
         if (resolvedOptions.onBeforeClose) {
           deciding = true;
           try {
+            // A rejection keeps the modal open and reaches the caller of close().
             if (!(await resolvedOptions.onBeforeClose(value))) return;
           } finally {
             deciding = false;
           }
+          // Destroyed with its host while onBeforeClose was deciding.
+          if (closed) return;
         }
         closed = true;
         window.removeEventListener("keydown", onKeyDown);
@@ -323,7 +330,15 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
         if (closed || locked() || !isTopModal()) return;
         if (reason === "escape" && !resolvedOptions.closeOnEscape) return;
         if (reason === "backdrop" && !resolvedOptions.closeOnBackdrop) return;
-        void close(reason);
+        close(reason).catch(reportCloseError);
+      };
+
+      const destroy = () => {
+        if (closed) return;
+        closed = true;
+        window.removeEventListener("keydown", onKeyDown);
+        resolve("closeAll");
+        dispose();
       };
 
       const onKeyDown = (event: KeyboardEvent) => {
@@ -341,6 +356,7 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
           renderContent: options.content,
           close,
           requestDismiss,
+          destroy,
           lock: (value: boolean) => setLocked(value),
           locked,
           exiting,
@@ -351,8 +367,20 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
   });
 }
 
+/**
+ * A dismissal (Escape, backdrop, closeAll) has no caller to hand an onBeforeClose error to, so it
+ * is reported like an uncaught error, and the modal stays open.
+ */
+function reportCloseError(error: unknown) {
+  if (typeof globalThis.reportError === "function") globalThis.reportError(error);
+  else
+    queueMicrotask(() => {
+      throw error;
+    });
+}
+
 function closeAll() {
-  for (const item of getModals?.() ?? []) void item.close("closeAll");
+  for (const item of getModals?.() ?? []) item.close("closeAll").catch(reportCloseError);
 }
 
 export const modal = {

@@ -2,7 +2,7 @@ import { createEffect, createSignal, type JSX, splitProps, untrack } from "solid
 
 import { CloseIcon } from "../../icons";
 import { createSearchCall } from "../../utils/debounce";
-import { afterFormReset, onFormReset } from "../../utils/form";
+import { afterFormReset, isCompositionKey, onFormReset } from "../../utils/form";
 import { Input, type InputProps } from "../Input/Input";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
 
@@ -65,7 +65,7 @@ export function InputSearch(props: InputSearchProps) {
   const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = event => {
     if (typeof local.onKeyDown === "function") local.onKeyDown(event);
     // Enter asks for results now; the form's own Enter handling is left as it is.
-    if (event.key === "Enter" && !event.isComposing) search.now(event.currentTarget.value);
+    if (event.key === "Enter" && !isCompositionKey(event)) search.now(event.currentTarget.value);
   };
 
   return (

@@ -122,3 +122,17 @@
   font-size: var(--bx-font-size-xs);
   color: var(--bx-text-dimmed);
 }
+
+.bx-Checkbox-error {
+  margin: 0;
+  font-size: var(--bx-font-size-xs);
+  color: var(--bx-danger);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.bx-Checkbox-input[aria-invalid="true"] {
+  border-color: var(--bx-danger);
+}

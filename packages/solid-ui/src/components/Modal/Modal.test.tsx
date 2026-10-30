@@ -2,7 +2,7 @@ import { createContext, useContext } from "solid-js";
 import { render, screen, waitFor } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Button } from "../Button/Button";
 
@@ -93,5 +93,56 @@ describe("modal", () => {
     expect(await screen.findByText("Theme: dark")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "OK" }));
     await expect(result).resolves.toBe("ok");
+  });
+
+  it("settles its open modals when the ModalHost unmounts", async () => {
+    const { unmount } = render(() => <ModalHost />);
+    const result = modal.open({
+      content: () => <Modal aria-label="Orphaned">Content</Modal>
+    });
+    await screen.findByRole("dialog", { name: "Orphaned" });
+    unmount();
+    await expect(result).resolves.toBe("closeAll");
+    expect(document.documentElement).not.toHaveClass("bx-scroll-locked");
+
+    // Its Escape listener is gone with it: a modal opened afterwards closes on the first Escape.
+    const next = modal.open({ content: () => <Modal aria-label="Next">Content</Modal> });
+    await screen.findByRole("dialog", { name: "Next" });
+    await userEvent.keyboard("{Escape}");
+    await expect(next).resolves.toBe("escape");
+  });
+
+  it("stays open when onBeforeClose fails, and reports why", async () => {
+    const failure = new Error("Couldn't check for unsaved changes");
+    const reportError = vi.fn();
+    vi.stubGlobal("reportError", reportError);
+    try {
+      let attempt = 0;
+      let close: ((value?: string) => Promise<void>) | undefined;
+      const result = modal.open({
+        onBeforeClose: () => {
+          attempt++;
+          if (attempt <= 2) throw failure;
+          return true;
+        },
+        content: ctx => {
+          close = ctx.close;
+          return <Modal aria-label="Draft">Content</Modal>;
+        }
+      });
+      await screen.findByRole("dialog", { name: "Draft" });
+
+      // A dismissal has no caller, so the error is reported.
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(reportError).toHaveBeenCalledWith(failure));
+      // close() hands it to its caller.
+      await expect(close?.("save")).rejects.toBe(failure);
+      expect(screen.getByRole("dialog", { name: "Draft" })).toBeInTheDocument();
+
+      await close?.("save");
+      await expect(result).resolves.toBe("save");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -60,6 +60,64 @@ describe("Table", () => {
     expect(onRowClick).toHaveBeenLastCalledWith(orders[1], expect.anything());
   });
 
+  it("gives each row a named action button with rowLabel, in place of the row's Tab stop", async () => {
+    const onRowClick = vi.fn();
+    render(() => (
+      <Table
+        columns={columns}
+        data={orders}
+        stackBelow={0}
+        onRowClick={onRowClick}
+        rowLabel={order => `Open order ${order.id}`}
+      />
+    ));
+    const open = screen.getByRole("button", { name: "Open order 2" });
+    // In the first cell, so screen readers meet it with the row's content.
+    expect(open.closest("td")).toBe(screen.getByText("Grace").closest("tr")!.cells[0]);
+    expect(screen.getByText("Ada").closest("tr")).not.toHaveAttribute("tabindex");
+
+    // One Tab stop per row: the button.
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Open order 1" })).toHaveFocus();
+    await userEvent.tab();
+    expect(open).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onRowClick).toHaveBeenCalledOnce();
+    expect(onRowClick).toHaveBeenLastCalledWith(orders[1], expect.anything());
+
+    // The mouse still clicks the whole row.
+    await userEvent.click(screen.getByText("Ada"));
+    expect(onRowClick).toHaveBeenLastCalledWith(orders[0], expect.anything());
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+  });
+
+  it("puts the row action in a cell the stacked layout still shows", () => {
+    const withHiddenFirst: TableColumn<Order>[] = [
+      { header: "Id", render: order => order.id, stacked: "hidden" },
+      ...columns
+    ];
+    render(() => (
+      <Table
+        columns={withHiddenFirst}
+        data={orders}
+        stackBelow={576}
+        onRowClick={() => {}}
+        rowLabel={order => `Open order ${order.id}`}
+      />
+    ));
+    expect(screen.getByRole("button", { name: "Open order 1" }).closest("td")).toHaveAttribute(
+      "data-stacked-as",
+      "label"
+    );
+  });
+
+  it("adds no row action without onRowClick", () => {
+    render(() => (
+      <Table columns={columns} data={orders} stackBelow={0} rowLabel={order => `${order.id}`} />
+    ));
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("leaves clicks on a control inside a row to that control", async () => {
     const onRowClick = vi.fn();
     const onEdit = vi.fn();
@@ -89,6 +147,49 @@ describe("Table", () => {
     expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
     expect(onChange).toHaveBeenCalledWith(2);
+  });
+
+  it("keeps pagination on an empty page past the first, so there is a way back", async () => {
+    const onChange = vi.fn();
+    render(() => (
+      <Table
+        columns={columns}
+        data={[]}
+        stackBelow={0}
+        pagination={{ page: 3, pageSize: 10, totalItems: 25, onChange, itemName: "order" }}
+      />
+    ));
+    expect(screen.getByText("No data found")).toBeInTheDocument();
+    // No "Showing 21 – 25" over a page that shows nothing.
+    expect(screen.queryByText(/Showing/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    expect(onChange).toHaveBeenCalledWith(2);
+  });
+
+  it("keeps a way back even when the total has dropped to one page", async () => {
+    const onChange = vi.fn();
+    render(() => (
+      <Table
+        columns={columns}
+        data={[]}
+        stackBelow={0}
+        pagination={{ page: 2, pageSize: 10, totalItems: 0, onChange }}
+      />
+    ));
+    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    expect(onChange).toHaveBeenCalledWith(1);
+  });
+
+  it("hides pagination on an empty first page", () => {
+    render(() => (
+      <Table
+        columns={columns}
+        data={[]}
+        stackBelow={0}
+        pagination={{ page: 1, pageSize: 10, totalItems: 0, onChange: () => {} }}
+      />
+    ));
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 });
 

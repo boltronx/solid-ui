@@ -65,6 +65,43 @@ describe("message", () => {
     expect(item).toHaveAttribute("data-exiting");
   });
 
+  it("pauses while focus is inside it, as it does for the pointer", () => {
+    message.success("Saved", { seconds: 2, closable: true });
+    const item = screen.getByText("Saved").closest(".bx-Message-item")!;
+    const close = screen.getByRole("button", { name: "Close notification" });
+
+    vi.advanceTimersByTime(1500);
+    fireEvent.focusIn(close);
+    vi.advanceTimersByTime(10_000);
+    expect(item).not.toHaveAttribute("data-exiting");
+
+    // The pointer leaving doesn't restart it while focus is still inside.
+    fireEvent.pointerEnter(item);
+    fireEvent.pointerLeave(item);
+    vi.advanceTimersByTime(10_000);
+    expect(item).not.toHaveAttribute("data-exiting");
+
+    fireEvent.focusOut(close, { relatedTarget: document.body });
+    vi.advanceTimersByTime(499);
+    expect(item).not.toHaveAttribute("data-exiting");
+    vi.advanceTimersByTime(1);
+    expect(item).toHaveAttribute("data-exiting");
+  });
+
+  it("stays with Infinity or a duration longer than a timer can hold", () => {
+    const closeForever = message.info("Forever", Infinity);
+    const closeMonth = message.info("A month", 30 * 24 * 60 * 60);
+    const forever = screen.getByText("Forever").closest(".bx-Message-item")!;
+    const month = screen.getByText("A month").closest(".bx-Message-item")!;
+    vi.advanceTimersByTime(60_000);
+    expect(forever).not.toHaveAttribute("data-exiting");
+    expect(month).not.toHaveAttribute("data-exiting");
+    // Infinity never leaves on its own, so it can be closed.
+    expect(forever.querySelector(".bx-Message-close")).not.toBeNull();
+    closeForever();
+    closeMonth();
+  });
+
   it("uses longer defaults for errors than for successes", () => {
     message.success("Done");
     message.error("Broken");

@@ -8,12 +8,18 @@ import type { Demo as DemoData } from "./registry";
 
 export function Demo(props: { demo: DemoData }) {
   const [showCode, setShowCode] = createSignal(false);
-  const [copied, setCopied] = createSignal(false);
+  const [copyState, setCopyState] = createSignal<"idle" | "copied" | "failed">("idle");
 
   const copy = async () => {
-    await navigator.clipboard.writeText(props.demo.source);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(props.demo.source);
+      setCopyState("copied");
+    } catch {
+      // Clipboard access can be denied (permissions, an insecure origin); say so rather than
+      // leaving the button looking like it worked.
+      setCopyState("failed");
+    }
+    setTimeout(() => setCopyState("idle"), 1500);
   };
 
   return (
@@ -32,8 +38,12 @@ export function Demo(props: { demo: DemoData }) {
         </div>
         <Group justify="flex-end" gap="xs" class="docs-demo-toolbar">
           <Show when={showCode()}>
-            <Button variant="subtle" onClick={copy} leftSection={copied() ? <IconCheck /> : null}>
-              {copied() ? "Copied" : "Copy"}
+            <Button
+              variant="subtle"
+              onClick={copy}
+              leftSection={copyState() === "copied" ? <IconCheck /> : null}
+            >
+              {{ idle: "Copy", copied: "Copied", failed: "Copy failed" }[copyState()]}
             </Button>
           </Show>
           <Button

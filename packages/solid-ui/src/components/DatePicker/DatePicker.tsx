@@ -297,7 +297,13 @@ export function DatePicker(props: DatePickerProps) {
       class={cx("bx-DatePicker", local.class)}
       style={local.style}
       data-inactive={inactive() ? "" : undefined}
-      onClick={() => (open() ? setOpen(false) : openCalendar())}
+      onClick={event => {
+        // A click on the label is followed by the click it forwards to the input; toggling on
+        // both would open the calendar and close it again.
+        if ((event.target as Element).closest("label")) return;
+        if (open()) setOpen(false);
+        else openCalendar();
+      }}
     >
       <Input
         id={field.id}

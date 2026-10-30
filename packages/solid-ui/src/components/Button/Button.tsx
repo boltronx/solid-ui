@@ -36,9 +36,23 @@ export function Button(props: ButtonProps) {
     "autoFocus",
     "disabled",
     "type",
-    "ref"
+    "ref",
+    "onClick"
   ]);
   const variant = () => local.variant ?? "default";
+
+  // A loading button stays enabled, so it keeps focus (a disabled one would drop a keyboard user
+  // to <body>); its clicks, and the form submits they would start, are blocked here instead.
+  const handleClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = event => {
+    if (local.loading) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    const handler = local.onClick;
+    if (typeof handler === "function") handler(event);
+    else handler?.[0](handler[1], event);
+  };
 
   return (
     <button
@@ -56,8 +70,10 @@ export function Button(props: ButtonProps) {
       data-full-width={local.fullWidth ? "" : undefined}
       data-with-left={local.loading || local.leftSection ? "" : undefined}
       data-with-right={local.rightSection ? "" : undefined}
-      disabled={local.disabled || local.loading}
+      disabled={local.disabled}
+      aria-disabled={local.loading && !local.disabled ? true : undefined}
       aria-busy={local.loading || undefined}
+      onClick={handleClick}
     >
       {local.loading ? (
         <span class="bx-Button-section">

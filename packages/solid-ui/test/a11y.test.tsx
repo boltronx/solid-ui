@@ -251,6 +251,14 @@ describe("accessibility (axe)", () => {
           ]}
           onRowClick={() => {}}
         />
+        <Table
+          aria-label="Orders with row actions"
+          stackBelow={0}
+          columns={[{ header: "Order", render: row => row.id }]}
+          data={[{ id: "B-1" }, { id: "B-2" }]}
+          onRowClick={() => {}}
+          rowLabel={row => `Open order ${row.id}`}
+        />
         <Table<{ id: string }>
           aria-label="Empty"
           stackBelow={0}

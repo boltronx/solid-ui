@@ -8,7 +8,12 @@ import {
   untrack
 } from "solid-js";
 
-import { afterFormReset, keepControlledOnReset, onFormReset } from "../../utils/form";
+import {
+  afterFormReset,
+  isCompositionKey,
+  keepControlledOnReset,
+  onFormReset
+} from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
@@ -134,9 +139,9 @@ export function Textarea(props: TextareaProps) {
             fit();
           });
           el.addEventListener("keydown", event => {
-            // isComposing: Enter that confirms an IME composition is not a submit.
+            // Enter that confirms an IME composition is not a submit.
             if (!local.submitOnEnter || event.key !== "Enter" || event.shiftKey) return;
-            if (event.isComposing) return;
+            if (isCompositionKey(event)) return;
             event.preventDefault();
             el.form?.requestSubmit();
           });

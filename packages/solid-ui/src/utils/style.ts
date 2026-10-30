@@ -37,11 +37,40 @@ export function resolveSize(size: SizeProp | undefined, scale = "spacing"): stri
   return size;
 }
 
+/**
+ * Whether a value stays within its own declaration once written into a style string: no `;`, `{`
+ * or `}` outside quotes and brackets, no comment, and every quote and bracket closed. A value such
+ * as `red; background: url(...)` would otherwise add declarations of its own, which matters when
+ * it comes from user data (e.g. a profile's avatar color). `url(data:...;base64,...)` stays valid.
+ */
+function isContainedValue(value: string): boolean {
+  if (value.includes("/*")) return false;
+  let depth = 0;
+  let quote: string | undefined;
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+    if (quote) {
+      if (char === "\\") i++;
+      else if (char === quote) quote = undefined;
+    } else if (char === '"' || char === "'") quote = char;
+    // An escape outside quotes could hide a bracket from this count, e.g. `url(a\)`.
+    else if (char === "\\") return false;
+    else if (char === "(" || char === "[") depth++;
+    else if (char === ")" || char === "]") {
+      if (--depth < 0) return false;
+    } else if (depth === 0 && (char === ";" || char === "{" || char === "}")) return false;
+  }
+  return depth === 0 && quote === undefined;
+}
+
 function styleEntryToCss(key: string, value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
+  const text = String(value);
+  // Dropped, like any invalid value the browser would ignore.
+  if (!isContainedValue(text)) return null;
   // Custom properties are case-sensitive, so only regular property names are kebab-cased.
   const cssKey = key.startsWith("--") ? key : key.replace(/([A-Z])/g, "-$1").toLowerCase();
-  return `${cssKey}: ${String(value)}`;
+  return `${cssKey}: ${text}`;
 }
 
 function styleObjectToCss(style: Record<string, unknown> | undefined): string {
@@ -55,6 +84,8 @@ function styleObjectToCss(style: Record<string, unknown> | undefined): string {
 /**
  * Merges a user `style` prop (string or object) with the component's own declarations. The user's
  * style comes last, so it wins where both set a property, e.g. `<Card style={{ padding: 0 }}>`.
+ * Object values that would break out of their declaration are dropped; a style string is the
+ * caller's own CSS and is kept as written.
  */
 export function mergeStyle(
   style: StyleProp,

@@ -1,9 +1,11 @@
+import { createSignal } from "solid-js";
 import { screen } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderInForm } from "../../../test/helpers";
+import { focusFirstInvalid } from "../../utils/form";
 
 import { Checkbox } from "./Checkbox";
 
@@ -44,6 +46,34 @@ describe("Checkbox", () => {
   it("is announced as a checkbox", () => {
     renderInForm(() => <Checkbox label="Agree" />);
     expect(screen.getByRole("checkbox", { name: "Agree" })).not.toHaveAttribute("role");
+  });
+
+  it("can be named without a visible label", () => {
+    renderInForm(() => (
+      <>
+        <span id="row-name">Order SO-1042</span>
+        <Checkbox aria-label="Select all orders" />
+        <Checkbox aria-labelledby="row-name" />
+      </>
+    ));
+    expect(screen.getByRole("checkbox", { name: "Select all orders" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Order SO-1042" })).toBeInTheDocument();
+    // No empty body beside a box that has nothing to show.
+    expect(document.querySelector(".bx-Checkbox-body")).toBeNull();
+  });
+
+  it("shows an error, marks the box invalid and describes it", async () => {
+    const [error, setError] = createSignal<string>();
+    renderInForm(() => (
+      <Checkbox label="Accept the terms" description="Required to continue" error={error()} />
+    ));
+    const box = screen.getByRole("checkbox", { name: "Accept the terms" });
+    expect(box).not.toHaveAttribute("aria-invalid");
+    expect(box).toHaveAccessibleDescription("Required to continue");
+    setError("Accept the terms to continue");
+    expect(box).toHaveAttribute("aria-invalid", "true");
+    expect(box).toHaveAccessibleDescription("Required to continue Accept the terms to continue");
+    expect(await focusFirstInvalid()).toBe(box);
   });
 });
 

@@ -9,6 +9,20 @@ import { ReadOnlyProvider } from "../ReadOnly/ReadOnly";
 import { InputSearch } from "./InputSearch";
 
 describe("InputSearch", () => {
+  it("searches on Enter, but not on the Enter that confirms IME text", () => {
+    const onSearch = vi.fn();
+    renderInForm(() => <InputSearch label="Search" onSearch={onSearch} />);
+    const input = screen.getByLabelText("Search") as HTMLInputElement;
+    input.value = "東京";
+    const enter = (init: KeyboardEventInit) =>
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, ...init }));
+    enter({ isComposing: true });
+    enter({ keyCode: 229 });
+    expect(onSearch).not.toHaveBeenCalled();
+    enter({});
+    expect(onSearch).toHaveBeenCalledWith("東京", expect.any(AbortSignal));
+  });
+
   it("shows a clear button once there is text, and clearing fires onInput", async () => {
     const onInput = vi.fn();
     const { data } = renderInForm(() => <InputSearch label="Search" name="q" onInput={onInput} />);

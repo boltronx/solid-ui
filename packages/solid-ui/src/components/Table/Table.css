@@ -123,7 +123,9 @@
     cursor: pointer;
   }
 
-  &:focus-visible {
+  /* The row action button is unseen, so the row shows its focus instead. */
+  &:focus-visible,
+  &:has(.bx-Table-rowAction:focus-visible) {
     outline: 2px solid var(--bx-focus);
     outline-offset: -2px;
   }

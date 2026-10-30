@@ -6,7 +6,10 @@ import { CloseIcon, ErrorIcon, InfoIcon, SuccessIcon, WarningIcon } from "../../
 export type MessageType = "success" | "error" | "warning" | "info";
 
 export interface MessageOptions {
-  /** How long the message stays, in seconds. 0 keeps it until it is closed (and makes it closable). */
+  /**
+   * How long the message stays, in seconds. 0 (or Infinity) keeps it until it is closed, and
+   * makes it closable.
+   */
   seconds?: number;
   /** Replaces the icon for its type. */
   icon?: JSX.Element;
@@ -24,10 +27,16 @@ interface MessageItem {
   icon: JSX.Element | undefined;
   closable: boolean;
   exiting: () => boolean;
-  pause: () => void;
-  resume: () => void;
+  /** Holds the timer while the pointer is over the message or focus is inside it. */
+  hold: (source: "pointer" | "focus", held: boolean) => void;
   close: () => void;
 }
+
+/** setTimeout's longest delay; a longer one overflows and fires at once. */
+const MAX_DELAY = 2 ** 31 - 1;
+
+/** Whether a message with this duration stays until it is closed. */
+const isPersistent = (seconds: number) => !Number.isFinite(seconds) || seconds <= 0;
 
 let idCounter = 0;
 let setMessages: ((updater: (prev: MessageItem[]) => MessageItem[]) => void) | undefined;
@@ -59,8 +68,14 @@ function MessageContainer() {
               class="bx-Message-item"
               data-type={item.type}
               data-exiting={item.exiting() ? "" : undefined}
-              onPointerEnter={item.pause}
-              onPointerLeave={item.resume}
+              onPointerEnter={() => item.hold("pointer", true)}
+              onPointerLeave={() => item.hold("pointer", false)}
+              // Keyboard users get the same time as a pointer resting on it (WCAG 2.2.1).
+              onFocusIn={() => item.hold("focus", true)}
+              onFocusOut={event => {
+                const next = event.relatedTarget as Node | null;
+                if (!event.currentTarget.contains(next)) item.hold("focus", false);
+              }}
             >
               {/* An error is read out by the alert region instead, so it isn't heard twice. */}
               <span
@@ -134,7 +149,13 @@ function show(
     closable = false
   } = typeof options === "number" ? { seconds: options } : (options ?? {});
   // One that never leaves on its own must be closable, or it could stay on screen for good.
-  const queued: QueuedMessage = { type, text, icon, seconds, closable: closable || seconds <= 0 };
+  const queued: QueuedMessage = {
+    type,
+    text,
+    icon,
+    seconds,
+    closable: closable || isPersistent(seconds)
+  };
   queue.push(queued);
   drain();
   return () => {
@@ -155,10 +176,11 @@ function display(queued: QueuedMessage) {
   createRoot(dispose => {
     const [exiting, setExiting] = createSignal(false);
     // The duration starts when the message appears, not while it waits in the queue.
-    let remaining = Math.max(0, seconds * 1000);
-    const persistent = seconds <= 0;
+    const persistent = isPersistent(seconds);
+    let remaining = persistent ? 0 : Math.min(seconds * 1000, MAX_DELAY);
     let startedAt = 0;
     let dismissTimer: ReturnType<typeof setTimeout> | undefined;
+    const holds = new Set<"pointer" | "focus">();
 
     const dismiss = () => {
       // Closed by the button, by its close function or by the timer: whichever comes first.
@@ -188,11 +210,20 @@ function display(queued: QueuedMessage) {
       remaining = Math.max(0, remaining - (performance.now() - startedAt));
     };
 
+    // Paused while either holds it, so leaving with the pointer doesn't restart a message that
+    // still has focus inside.
+    const hold = (source: "pointer" | "focus", held: boolean) => {
+      if (held) holds.add(source);
+      else holds.delete(source);
+      if (holds.size > 0) pause();
+      else resume();
+    };
+
     // The item object is never replaced — only `exiting` (a signal) changes.
     // This keeps <For> from recreating DOM nodes during the exit transition.
     setMessages!(prev => [
       ...prev,
-      { id, type, text, icon, closable, exiting, pause, resume, close: dismiss }
+      { id, type, text, icon, closable, exiting, hold, close: dismiss }
     ]);
     queued.close = dismiss;
     if (type === "error") announceError!(text);

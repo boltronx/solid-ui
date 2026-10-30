@@ -3,6 +3,7 @@ import { createEffect, createUniqueId, splitProps } from "solid-js";
 
 import { afterFormReset, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
+import { describedBy, fieldIds } from "../Field/Field";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
 
 /** What Checkbox and Switch share: both are an <input type="checkbox"> with a label. */
@@ -20,6 +21,12 @@ export interface CheckboxBaseProps extends BaseProps {
   required?: boolean;
   label?: JSX.Element;
   description?: JSX.Element;
+  /** Shown under the label; the box is then marked `aria-invalid`. */
+  error?: JSX.Element;
+  /** Names a box without a visible `label`, e.g. the select box of a table row. */
+  "aria-label"?: string;
+  /** Id of an element that names the box, for a label that lives elsewhere. */
+  "aria-labelledby"?: string;
   /** Which side of the control the label goes on. Default "right". */
   labelPosition?: "left" | "right";
   ref?: (el: HTMLInputElement) => void;
@@ -55,6 +62,7 @@ export function CheckboxControl(props: CheckboxControlProps) {
     "id",
     "label",
     "description",
+    "error",
     "variant",
     "readOnly",
     "defaultChecked",
@@ -106,8 +114,11 @@ export function CheckboxControl(props: CheckboxControlProps) {
       disabled={rest.disabled}
       required={rest.required}
       role={local.variant === "switch" ? "switch" : undefined}
+      aria-label={rest["aria-label"]}
+      aria-labelledby={rest["aria-labelledby"]}
       aria-readonly={isReadOnly() || undefined}
-      aria-describedby={local.description ? `${inputId()}-description` : undefined}
+      aria-invalid={local.error ? true : undefined}
+      aria-describedby={describedBy(inputId(), local)}
       onClick={event => {
         if (isReadOnly()) event.preventDefault();
       }}
@@ -138,7 +149,7 @@ export function CheckboxControl(props: CheckboxControlProps) {
       }}
     >
       {local.renderControl ? local.renderControl(control) : control}
-      {local.label || local.description ? (
+      {local.label || local.description || local.error ? (
         <div class="bx-Checkbox-body">
           {local.label ? (
             <label class="bx-Checkbox-label" for={inputId()}>
@@ -146,10 +157,14 @@ export function CheckboxControl(props: CheckboxControlProps) {
             </label>
           ) : null}
           {local.description ? (
-            <p id={`${inputId()}-description`} class="bx-Checkbox-description">
+            <p id={fieldIds(inputId()).description} class="bx-Checkbox-description">
               {local.description}
             </p>
           ) : null}
+          {/* Always there while the body is, so its live region speaks when an error appears. */}
+          <p id={fieldIds(inputId()).error} class="bx-Checkbox-error" aria-live="polite">
+            {local.error}
+          </p>
         </div>
       ) : null}
     </div>

@@ -29,4 +29,21 @@ describe("Textarea", () => {
     await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
     expect(onSubmit).toHaveBeenCalledOnce();
   });
+
+  it("doesn't submit on the Enter that confirms IME text, including Safari's late one", () => {
+    const { form } = renderInForm(() => <Textarea label="Message" submitOnEnter />);
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    const textarea = screen.getByLabelText("Message");
+    const enter = (init: KeyboardEventInit) =>
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, ...init })
+      );
+    enter({ isComposing: true });
+    // Safari: composition already over, but keyCode 229 marks the IME's Enter.
+    enter({ keyCode: 229 });
+    expect(onSubmit).not.toHaveBeenCalled();
+    enter({});
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
 });
