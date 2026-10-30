@@ -269,7 +269,12 @@ export function Table<T>(props: TableProps<T>) {
                     // A click on a control inside the row (a link, a row action) is that
                     // control's, not the row's.
                     const control = (event.target as Element).closest(INTERACTIVE);
-                    if (control && control !== event.currentTarget) return;
+                    if (
+                      control &&
+                      control !== event.currentTarget &&
+                      event.currentTarget.contains(control)
+                    )
+                      return;
                     props.onRowClick?.(row, event);
                   }}
                   onKeyDown={event => {
