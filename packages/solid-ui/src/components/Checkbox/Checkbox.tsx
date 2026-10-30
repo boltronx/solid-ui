@@ -153,7 +153,8 @@ export function CheckboxControl(props: CheckboxControlProps) {
       onClick={event => {
         // The whole row toggles, not just the box and its label, except for a click that is a
         // control's own, e.g. a link to the terms in the description.
-        if ((event.target as HTMLElement).closest(ROW_CLICK_EXCLUDED)) return;
+        const control = (event.target as HTMLElement).closest(ROW_CLICK_EXCLUDED);
+        if (control && (event.currentTarget.contains(control) || control.matches("label"))) return;
         if (disabled() || isReadOnly()) return;
         input?.click();
       }}
