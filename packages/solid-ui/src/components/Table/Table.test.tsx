@@ -60,6 +60,21 @@ describe("Table", () => {
     expect(onRowClick).toHaveBeenLastCalledWith(orders[1], expect.anything());
   });
 
+  it("leaves clicks on a control inside a row to that control", async () => {
+    const onRowClick = vi.fn();
+    const onEdit = vi.fn();
+    const withAction: TableColumn<Order>[] = [
+      ...columns,
+      { header: "", render: order => <button onClick={() => onEdit(order)}>Edit</button> }
+    ];
+    render(() => (
+      <Table columns={withAction} data={orders} stackBelow={0} onRowClick={onRowClick} />
+    ));
+    await userEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]!);
+    expect(onEdit).toHaveBeenCalledWith(orders[0]);
+    expect(onRowClick).not.toHaveBeenCalled();
+  });
+
   it("paginates", async () => {
     const onChange = vi.fn();
     render(() => (

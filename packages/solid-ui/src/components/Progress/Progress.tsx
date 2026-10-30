@@ -18,7 +18,8 @@ export interface ProgressProps extends BaseProps {
 
 export function Progress(props: ProgressProps) {
   const max = () => props.max ?? 100;
-  const percentage = () => Math.min(Math.max((props.value / max()) * 100, 0), 100);
+  const value = () => Math.min(Math.max(props.value, 0), max());
+  const percentage = () => (max() > 0 ? (value() / max()) * 100 : 0);
 
   return (
     <div
@@ -28,7 +29,7 @@ export function Progress(props: ProgressProps) {
       data-striped={props.striped || props.animated ? "" : undefined}
       data-animated={props.animated ? "" : undefined}
       role="progressbar"
-      aria-valuenow={props.value}
+      aria-valuenow={value()}
       aria-valuemin={0}
       aria-valuemax={max()}
       aria-label={props.label ?? props["aria-label"]}

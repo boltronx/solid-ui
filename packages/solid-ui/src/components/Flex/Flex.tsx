@@ -48,9 +48,6 @@ export interface FlexProps
   inline?: boolean;
 }
 
-const size = (value: SizeProp | undefined) =>
-  value === undefined ? undefined : resolveSize(value);
-
 /**
  * The general flexbox container, for what Stack (a column) and Group (a row) don't cover:
  * reversed or responsive directions, wrapping and separate row and column gaps. Responsive
@@ -71,7 +68,7 @@ export function Flex(props: FlexProps) {
     "columnGap",
     "inline"
   ]);
-  const directions = () =>
+  const directions = (): Exclude<ResponsiveDirection, FlexDirection> =>
     typeof local.direction === "object" ? local.direction : { base: local.direction };
   // Each breakpoint's direction goes in a variable the stylesheet's media queries read, so the
   // layout changes with the screen without JavaScript.
@@ -95,14 +92,15 @@ export function Flex(props: FlexProps) {
       class={cx("bx-Flex", local.class)}
       data-inline={local.inline ? "" : undefined}
       style={mergeStyle(local.style, {
-        "--bx-flex-direction": directions().base,
+        // Always set: custom properties inherit, so an unset one would take a parent Flex's.
+        "--bx-flex-direction": directions().base ?? "row",
         ...breakpointVars(),
         "flex-wrap": local.wrap,
         "justify-content": local.justify,
         "align-items": local.align,
-        gap: size(local.gap),
-        "row-gap": size(local.rowGap),
-        "column-gap": size(local.columnGap)
+        gap: resolveSize(local.gap),
+        "row-gap": resolveSize(local.rowGap),
+        "column-gap": resolveSize(local.columnGap)
       })}
     >
       {local.children}

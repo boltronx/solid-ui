@@ -12,7 +12,7 @@ import {
   splitProps,
   useContext
 } from "solid-js";
-import { render } from "solid-js/web";
+import { Portal, render } from "solid-js/web";
 
 import { CloseIcon } from "../../icons";
 import { cx, type StyleProp } from "../../utils/style";
@@ -126,7 +126,14 @@ function ModalContainer() {
   createEffect(() => {
     document.documentElement.classList.toggle("bx-scroll-locked", modals().length > 0);
   });
-  onCleanup(() => document.documentElement.classList.remove("bx-scroll-locked"));
+  onCleanup(() => {
+    document.documentElement.classList.remove("bx-scroll-locked");
+    // An unmounted ModalHost hands over to a fresh container on the next open.
+    if (setModals === setModalList) {
+      getModals = undefined;
+      setModals = undefined;
+    }
+  });
 
   return (
     <div class="bx-Modal" role="presentation">
@@ -242,6 +249,19 @@ function ModalFooter(props: ModalSectionProps) {
   );
 }
 
+/**
+ * Where modals render. Optional: without it, the first `modal.open` renders them in a root of
+ * their own, which can't see the app's context. Put it inside your providers (a router,
+ * ReadOnlyProvider, a theme) so modal content can use them, e.g. `useNavigate`.
+ */
+export function ModalHost() {
+  return (
+    <Portal>
+      <ModalContainer />
+    </Portal>
+  );
+}
+
 function ensureContainer() {
   if (setModals) return;
   const host = document.createElement("div");
@@ -267,14 +287,20 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
       const [exiting, setExiting] = createSignal(false);
       const [locked, setLocked] = createSignal(false);
       let closed = false;
+      // Set while onBeforeClose decides, so a second dismissal doesn't ask it again.
+      let deciding = false;
 
       const isTopModal = () => getModals?.().at(-1)?.id === id;
 
       const close = async (value?: T | ModalDismissReason | undefined) => {
-        if (closed) return;
+        if (closed || deciding) return;
         if (resolvedOptions.onBeforeClose) {
-          const proceed = await resolvedOptions.onBeforeClose(value);
-          if (!proceed) return;
+          deciding = true;
+          try {
+            if (!(await resolvedOptions.onBeforeClose(value))) return;
+          } finally {
+            deciding = false;
+          }
         }
         closed = true;
         window.removeEventListener("keydown", onKeyDown);

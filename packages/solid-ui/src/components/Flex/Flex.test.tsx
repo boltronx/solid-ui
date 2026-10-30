@@ -21,7 +21,7 @@ describe("Flex", () => {
       </Flex>
     ));
     expect(flex()).toHaveClass("bx-Flex");
-    expect(flex().style.getPropertyValue("--bx-flex-direction")).toBe("");
+    expect(flex().style.getPropertyValue("--bx-flex-direction")).toBe("row");
     expect(flex().style.gap).toBe("var(--bx-spacing-md)");
     expect(flex().style.rowGap).toBe("4px");
     expect(flex().style.justifyContent).toBe("space-between");
@@ -41,6 +41,15 @@ describe("Flex", () => {
     expect(flex().style.getPropertyValue("--bx-flex-direction-md")).toBe("row");
     expect(flex()).toHaveAttribute("data-direction-md");
     expect(flex()).not.toHaveAttribute("data-direction-sm");
+  });
+
+  it("sets its own direction rather than inheriting a parent Flex's", () => {
+    render(() => (
+      <Flex direction="column">
+        <Flex data-testid="flex" direction={{ md: "column" }} />
+      </Flex>
+    ));
+    expect(flex().style.getPropertyValue("--bx-flex-direction")).toBe("row");
   });
 
   it("renders the given element and passes attributes through", () => {

@@ -205,7 +205,8 @@ export function DatePicker(props: DatePickerProps) {
     if (inactive()) return;
     if (event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
-      if (!props.required) commit("");
+      // The same rule as the clear button, as Select does: only a clearable field clears.
+      if (canClear()) commit("");
       return;
     }
     if (!open()) {

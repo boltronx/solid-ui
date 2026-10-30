@@ -41,7 +41,11 @@ export function Navlink(props: NavlinkProps) {
   });
 
   const activate = (event: MouseEvent) => {
-    if (props.disabled) return;
+    if (props.disabled) {
+      // aria-disabled doesn't stop a link, so the navigation is cancelled here.
+      event.preventDefault();
+      return;
+    }
     if (hasChildren() && props.opened === undefined) setOpened(o => !o);
     props.onClick?.(event);
   };

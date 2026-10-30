@@ -68,4 +68,11 @@ describe("InputNumber", () => {
     expect(screen.getByText("₱")).toBeInTheDocument();
     expect(screen.getByLabelText("Price")).toHaveValue("5.00");
   });
+
+  it("submits the typed value when Enter submits the form before blur", async () => {
+    const { data } = renderInForm(() => <InputNumber label="Qty" name="qty" defaultValue={1} />);
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{Control>}a{/Control}5");
+    expect(data().get("qty")).toBe("5");
+  });
 });

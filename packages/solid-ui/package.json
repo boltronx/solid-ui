@@ -37,6 +37,10 @@
         "solid": "./dist/server.jsx",
         "default": "./dist/server.js"
       },
+      "browser": {
+        "solid": "./dist/index.jsx",
+        "default": "./dist/index.js"
+      },
       "deno": {
         "solid": "./dist/server.jsx",
         "default": "./dist/server.js"
@@ -44,10 +48,6 @@
       "node": {
         "solid": "./dist/server.jsx",
         "default": "./dist/server.js"
-      },
-      "browser": {
-        "solid": "./dist/index.jsx",
-        "default": "./dist/index.js"
       },
       "solid": "./dist/index.jsx",
       "default": "./dist/index.js"

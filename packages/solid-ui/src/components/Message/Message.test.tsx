@@ -27,6 +27,16 @@ describe("message", () => {
     );
   });
 
+  it("announces errors as an alert, read once", () => {
+    message.error("Payment failed");
+    vi.advanceTimersByTime(50);
+    expect(screen.getByRole("alert")).toHaveTextContent("Error: Payment failed");
+    expect(screen.getByText("Payment failed").closest(".bx-Message-content")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+  });
+
   it("leaves after its duration, with an exit transition first", () => {
     message.info("Heads up", 2);
     const item = screen.getByText("Heads up").closest(".bx-Message-item")!;
@@ -92,6 +102,41 @@ describe("message", () => {
       expect(screen.queryByText("Second")).toBeNull();
       vi.advanceTimersByTime(2000);
       expect(screen.getByText("Second")).toBeInTheDocument();
+    } finally {
+      message.config({ limit: 3 });
+    }
+  });
+
+  it("shows a close button when closable", () => {
+    message.success("Saved", { closable: true });
+    const item = screen.getByText("Saved").closest(".bx-Message-item")!;
+    fireEvent.click(screen.getByRole("button", { name: "Close notification" }));
+    expect(item).toHaveAttribute("data-exiting");
+  });
+
+  it("stays until closed with 0 seconds, and is then closable", () => {
+    message.warning("Connection lost", 0);
+    const item = screen.getByText("Connection lost").closest(".bx-Message-item")!;
+    fireEvent.pointerEnter(item);
+    fireEvent.pointerLeave(item);
+    vi.advanceTimersByTime(60_000);
+    expect(item).not.toHaveAttribute("data-exiting");
+    fireEvent.click(screen.getByRole("button", { name: "Close notification" }));
+    expect(item).toHaveAttribute("data-exiting");
+  });
+
+  it("returns a function that closes the message, or drops it from the queue", () => {
+    message.config({ limit: 1 });
+    try {
+      const closeUploading = message.info("Uploading", 0);
+      const closeQueued = message.info("Queued", 0);
+      const closeNext = message.info("Next", 0);
+      closeQueued();
+      closeUploading();
+      closeUploading();
+      expect(screen.getByText("Next")).toBeInTheDocument();
+      expect(screen.queryByText("Queued")).toBeNull();
+      closeNext();
     } finally {
       message.config({ limit: 3 });
     }

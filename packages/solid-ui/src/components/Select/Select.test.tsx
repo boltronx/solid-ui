@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { screen } from "@solidjs/testing-library";
+import { screen, waitFor } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -35,6 +35,17 @@ describe("Select", () => {
     expect(data().get("fruit")).toBe("banana");
     expect(onChange).toHaveBeenCalledWith("banana", fruits[1]);
     expect(screen.getByRole("combobox")).toHaveTextContent("Banana");
+  });
+
+  it("keeps its dropdown between openings rather than rebuilding it", async () => {
+    renderInForm(() => <Select label="Fruit" name="fruit" options={fruits} />);
+    const combobox = screen.getByRole("combobox");
+    await userEvent.click(combobox);
+    const option = await screen.findByRole("option", { name: "Apple" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(option).not.toBeInTheDocument());
+    await userEvent.click(combobox);
+    expect(await screen.findByRole("option", { name: "Apple" })).toBe(option);
   });
 
   it("ignores disabled options", async () => {

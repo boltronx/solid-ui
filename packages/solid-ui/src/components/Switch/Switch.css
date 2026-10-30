@@ -72,7 +72,7 @@
     background-color var(--bx-duration) ease,
     border-color var(--bx-duration) ease;
 
-  .bx-Switch-input:hover:not(:disabled) + & {
+  .bx-Switch:not([data-readonly]) .bx-Switch-input:hover:not(:disabled) + & {
     border-color: var(--bx-focus);
   }
 

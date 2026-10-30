@@ -28,7 +28,10 @@ export function cx(...args: (string | false | undefined | null)[]): string {
 }
 
 /** Resolves a size prop to a CSS length: a token name, a number of px, or any CSS length. */
-export function resolveSize(size: SizeProp, scale = "spacing"): string {
+export function resolveSize(size: SizeProp, scale?: string): string;
+export function resolveSize(size: SizeProp | undefined, scale?: string): string | undefined;
+export function resolveSize(size: SizeProp | undefined, scale = "spacing"): string | undefined {
+  if (size === undefined) return undefined;
   if (typeof size === "number") return `${size}px`;
   if (SIZES.has(size)) return `var(--bx-${scale}-${size})`;
   return size;
@@ -49,15 +52,18 @@ function styleObjectToCss(style: Record<string, unknown> | undefined): string {
     .join("; ");
 }
 
-/** Merges a user `style` prop (string or object) with the component's own declarations. */
+/**
+ * Merges a user `style` prop (string or object) with the component's own declarations. The user's
+ * style comes last, so it wins where both set a property, e.g. `<Card style={{ padding: 0 }}>`.
+ */
 export function mergeStyle(
   style: StyleProp,
   additions: Record<string, string | undefined>
 ): string | undefined {
-  const baseCss =
+  const userCss =
     typeof style === "string" ? style : styleObjectToCss(style as Record<string, unknown>);
   const additionsCss = styleObjectToCss(additions);
 
-  if (baseCss && additionsCss) return `${baseCss}; ${additionsCss}`;
-  return baseCss || additionsCss || undefined;
+  if (userCss && additionsCss) return `${additionsCss}; ${userCss}`;
+  return userCss || additionsCss || undefined;
 }

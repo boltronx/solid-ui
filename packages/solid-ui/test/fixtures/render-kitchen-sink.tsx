@@ -7,6 +7,6 @@ export function renderKitchenSink() {
   return {
     html: renderToString(() => <KitchenSink />),
     // The bootstrap a page puts in <head>; hydrate() reads the state it creates.
-    hydrationScript: /<script[^>]*>([\s\S]*?)<\/script>/.exec(generateHydrationScript())![1]!
+    hydrationScript: /<script[^>]*>([\s\S]*?)<\/script[^>]*>/i.exec(generateHydrationScript())![1]!
   };
 }

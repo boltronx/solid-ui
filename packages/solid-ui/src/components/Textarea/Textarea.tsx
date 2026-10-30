@@ -71,6 +71,9 @@ export function Textarea(props: TextareaProps) {
     if (left > Math.max(10, max / 10)) return "";
     return `${left} ${left === 1 ? "character" : "characters"} left`;
   };
+  // Read once: the text is only the starting point, so later changes to it (or every keystroke
+  // of a controlled value) would rewrite the DOM and move what a reset restores.
+  const initialText = untrack(() => local.value ?? local.defaultValue);
   let textarea: HTMLTextAreaElement | undefined;
 
   /** Sizes the box to its content, borders included since the box is border-box. */
@@ -167,7 +170,7 @@ export function Textarea(props: TextareaProps) {
           A textarea's text is its default: it fills an untouched box, is what a reset restores,
           and, unlike a ref, is in the server's HTML.
         */}
-        {local.value ?? local.defaultValue}
+        {initialText}
       </textarea>
       {local.showCount ? (
         <>

@@ -172,7 +172,7 @@ describe("Select server search", () => {
 });
 
 describe("Autocomplete server search", () => {
-  it("waits for typing to pause, but searches a picked suggestion right away", () => {
+  it("waits for typing to pause, and doesn't search a picked suggestion", () => {
     const onSearchChange = vi.fn();
     render(() => (
       <Autocomplete
@@ -187,11 +187,11 @@ describe("Autocomplete server search", () => {
     nextFrame();
     expect(onSearchChange).not.toHaveBeenCalled();
 
+    // Picked before the pause ends: neither the typed "ma" nor the picked label is searched.
     fireEvent.click(screen.getByRole("option", { name: "Manila" }));
-    expect(onSearchChange).toHaveBeenCalledTimes(1);
-    expect(onSearchChange).toHaveBeenCalledWith("Manila", expect.any(AbortSignal));
     vi.advanceTimersByTime(1000);
-    expect(onSearchChange).toHaveBeenCalledTimes(1);
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(input).toHaveValue("Manila");
   });
 });
 

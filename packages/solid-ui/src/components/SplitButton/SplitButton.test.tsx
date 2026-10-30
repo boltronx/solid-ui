@@ -28,10 +28,18 @@ describe("SplitButton", () => {
       </SplitButton>
     ));
     const toggle = screen.getByRole("button", { name: "More options" });
+    const main = screen.getByRole("button", { name: "Save" });
     expect(toggle).toHaveAttribute("aria-haspopup", "menu");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    // The main half is a plain button, not announced as a menu button.
+    expect(main).not.toHaveAttribute("aria-haspopup");
+    expect(main).not.toHaveAttribute("aria-expanded");
     await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
     await userEvent.click(await screen.findByRole("menuitem", { name: "Save as draft" }));
     expect(onDraft).toHaveBeenCalledOnce();
+    // Focus goes back to the half that opened the menu.
+    expect(toggle).toHaveFocus();
   });
 
   it("blocks both halves while disabled", async () => {

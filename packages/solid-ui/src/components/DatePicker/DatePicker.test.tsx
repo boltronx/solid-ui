@@ -83,9 +83,18 @@ describe("DatePicker", () => {
     expect(screen.getByRole("button", { name: "Wednesday, October 21, 2026" })).toBeDisabled();
   });
 
+  it("clears with Backspace only when clearable", async () => {
+    const { data } = renderInForm(() => (
+      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />
+    ));
+    screen.getByLabelText("Due date").focus();
+    await userEvent.keyboard("{Backspace}");
+    expect(data().get("due")).toBe("2026-10-05");
+  });
+
   it("restores defaultValue on form reset and clears with Backspace", async () => {
     const { data, reset } = renderInForm(() => (
-      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />
+      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" clearable />
     ));
     screen.getByLabelText("Due date").focus();
     await userEvent.keyboard("{Backspace}");

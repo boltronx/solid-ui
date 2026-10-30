@@ -79,6 +79,9 @@ export function paginationSummary(pagination: TablePagination): string {
   return `Showing ${count(start)} – ${count(end)} of ${count(totalItems)} ${itemName}${plural}`;
 }
 
+const INTERACTIVE =
+  'a[href], button, input, select, textarea, label, summary, [role="button"], [role="link"], [tabindex]';
+
 type Offsets = { left: (number | undefined)[]; right: (number | undefined)[] };
 
 export function Table<T>(props: TableProps<T>) {
@@ -235,7 +238,13 @@ export function Table<T>(props: TableProps<T>) {
                   class="bx-Table-tr"
                   data-clickable={props.onRowClick ? "" : undefined}
                   tabindex={props.onRowClick ? 0 : undefined}
-                  onClick={event => props.onRowClick?.(row, event)}
+                  onClick={event => {
+                    // A click on a control inside the row (a link, a row action) is that
+                    // control's, not the row's.
+                    const control = (event.target as Element).closest(INTERACTIVE);
+                    if (control && control !== event.currentTarget) return;
+                    props.onRowClick?.(row, event);
+                  }}
                   onKeyDown={event => {
                     if (event.key !== "Enter" || event.target !== event.currentTarget) return;
                     props.onRowClick?.(row, event);

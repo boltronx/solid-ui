@@ -141,7 +141,12 @@ export function MenuTarget(props: { children?: JSX.Element; class?: string; aria
   let targetRef: HTMLDivElement | undefined;
 
   onMount(() => {
-    const focusable = targetRef?.querySelector<HTMLElement>(FOCUSABLE) ?? undefined;
+    // A child already marked as the menu button (e.g. SplitButton's arrow half) wins over the
+    // first focusable one.
+    const focusable =
+      targetRef?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ??
+      targetRef?.querySelector<HTMLElement>(FOCUSABLE) ??
+      undefined;
     setStandalone(!focusable);
     menu?.setTrigger(focusable ?? targetRef);
   });

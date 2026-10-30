@@ -24,7 +24,8 @@
     "build": "pnpm --filter @boltronx/solid-ui build && pnpm --filter docs build",
     "test": "pnpm --filter @boltronx/solid-ui test",
     "test:coverage": "pnpm --filter @boltronx/solid-ui test:coverage",
-    "test:start": "pnpm --filter start-fixture build && pnpm --filter start-fixture test",
+    "test:start": "pnpm --filter @boltronx/solid-ui build && pnpm test:start:fixture",
+    "test:start:fixture": "pnpm --filter start-fixture build && pnpm --filter start-fixture test",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "lint:package": "pnpm --filter @boltronx/solid-ui lint:package",
@@ -32,7 +33,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "spellcheck": "cspell . --no-progress --gitignore",
-    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm test:start && pnpm lint:package",
+    "check": "pnpm format:check && pnpm spellcheck && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm test:start:fixture && pnpm lint:package",
     "update-deps": "pnpm up -r -Li"
   },
   "devDependencies": {

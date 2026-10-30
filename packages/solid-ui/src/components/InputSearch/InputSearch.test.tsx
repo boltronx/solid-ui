@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderInForm } from "../../../test/helpers";
+import { ReadOnlyProvider } from "../ReadOnly/ReadOnly";
 
 import { InputSearch } from "./InputSearch";
 
@@ -45,6 +46,15 @@ describe("InputSearch", () => {
         <InputSearch label="Disabled" defaultValue="a" disabled />
         <InputSearch label="Read-only" defaultValue="b" readOnly />
       </>
+    ));
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+  });
+
+  it("has no clear button inside a ReadOnlyProvider", () => {
+    renderInForm(() => (
+      <ReadOnlyProvider readOnly>
+        <InputSearch aria-label="Search" defaultValue="shoes" />
+      </ReadOnlyProvider>
     ));
     expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
   });

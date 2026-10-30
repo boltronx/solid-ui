@@ -4,6 +4,7 @@ import { CloseIcon } from "../../icons";
 import { createSearchCall } from "../../utils/debounce";
 import { afterFormReset, onFormReset } from "../../utils/form";
 import { Input, type InputProps } from "../Input/Input";
+import { useReadOnly } from "../ReadOnly/ReadOnly";
 
 export interface InputSearchProps extends Omit<InputProps, "type" | "rightSection" | "inputMode"> {
   /** Replaces the cross on the clear button. */
@@ -38,6 +39,7 @@ export function InputSearch(props: InputSearchProps) {
   const [hasValue, setHasValue] = createSignal(
     untrack(() => String(inputProps.value ?? inputProps.defaultValue ?? "").length > 0)
   );
+  const isReadOnly = useReadOnly(() => inputProps.readOnly === true);
   let input: HTMLInputElement | undefined;
 
   createEffect(() => {
@@ -81,7 +83,7 @@ export function InputSearch(props: InputSearchProps) {
         local.ref?.(element);
       }}
       rightSection={
-        hasValue() && !inputProps.disabled && !inputProps.readOnly
+        hasValue() && !inputProps.disabled && !isReadOnly()
           ? {
               pointerEvents: "all",
               node: (

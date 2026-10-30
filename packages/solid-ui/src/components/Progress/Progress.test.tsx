@@ -19,6 +19,7 @@ describe("Progress", () => {
   it("keeps the bar within 0–100%", () => {
     const { unmount } = render(() => <Progress value={150} />);
     expect(bar().style.width).toBe("100%");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
     unmount();
     render(() => <Progress value={-10} />);
     expect(bar().style.width).toBe("0%");

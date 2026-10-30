@@ -56,7 +56,12 @@ export type { LoaderProps } from "./components/Loader/Loader";
 export { Loader } from "./components/Loader/Loader";
 export type { MenuItemProps, MenuPosition, MenuProps } from "./components/Menu/Menu";
 export { Menu, MenuDivider, MenuDropdown, MenuItem, MenuTarget } from "./components/Menu/Menu";
-export type { MessageConfig, MessageOptions, MessageType } from "./components/Message/Message";
+export type {
+  CloseMessage,
+  MessageConfig,
+  MessageOptions,
+  MessageType
+} from "./components/Message/Message";
 export { message } from "./components/Message/Message";
 export type {
   ModalContext,
@@ -64,7 +69,7 @@ export type {
   ModalOptions,
   ModalPosition
 } from "./components/Modal/Modal";
-export { Modal, modal } from "./components/Modal/Modal";
+export { Modal, modal, ModalHost } from "./components/Modal/Modal";
 export type { NavlinkProps } from "./components/Navlink/Navlink";
 export { Navlink } from "./components/Navlink/Navlink";
 export type { PaginationProps } from "./components/Pagination/Pagination";

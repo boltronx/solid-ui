@@ -21,9 +21,15 @@ describe("resolveSize", () => {
 
 describe("mergeStyle", () => {
   it("merges string and object styles with additions", () => {
-    expect(mergeStyle("color: red", { gap: "1px" })).toBe("color: red; gap: 1px");
+    expect(mergeStyle("color: red", { gap: "1px" })).toBe("gap: 1px; color: red");
     expect(mergeStyle({ marginTop: "2px" } as never, { gap: undefined })).toBe("margin-top: 2px");
     expect(mergeStyle(undefined, {})).toBeUndefined();
+  });
+
+  it("lets the user's style override the component's", () => {
+    expect(mergeStyle({ padding: "0" }, { padding: "var(--bx-spacing-md)" })).toBe(
+      "padding: var(--bx-spacing-md); padding: 0"
+    );
   });
 
   it("keeps custom property names as written", () => {

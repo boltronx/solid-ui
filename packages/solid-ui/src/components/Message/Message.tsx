@@ -1,29 +1,37 @@
-import { createRoot, createSignal, For, type JSX } from "solid-js";
+import { createRoot, createSignal, For, type JSX, Show } from "solid-js";
 import { render } from "solid-js/web";
 
-import { ErrorIcon, InfoIcon, SuccessIcon, WarningIcon } from "../../icons";
+import { CloseIcon, ErrorIcon, InfoIcon, SuccessIcon, WarningIcon } from "../../icons";
 
 export type MessageType = "success" | "error" | "warning" | "info";
 
 export interface MessageOptions {
-  /** How long the message stays, in seconds. */
+  /** How long the message stays, in seconds. 0 keeps it until it is closed (and makes it closable). */
   seconds?: number;
   /** Replaces the icon for its type. */
   icon?: JSX.Element;
+  /** Shows a button that closes the message. */
+  closable?: boolean;
 }
+
+/** Closes the message, or drops it if it is still waiting in the queue. */
+export type CloseMessage = () => void;
 
 interface MessageItem {
   id: number;
   type: MessageType;
   text: string;
   icon: JSX.Element | undefined;
+  closable: boolean;
   exiting: () => boolean;
   pause: () => void;
   resume: () => void;
+  close: () => void;
 }
 
 let idCounter = 0;
 let setMessages: ((updater: (prev: MessageItem[]) => MessageItem[]) => void) | undefined;
+let announceError: ((text: string) => void) | undefined;
 
 const ICONS: Record<MessageType, () => JSX.Element> = {
   success: () => <SuccessIcon />,
@@ -34,25 +42,53 @@ const ICONS: Record<MessageType, () => JSX.Element> = {
 
 function MessageContainer() {
   const [messages, setMessageList] = createSignal<MessageItem[]>([]);
+  const [errorText, setErrorText] = createSignal("");
   setMessages = setMessageList;
+  // Emptied first, so the same error twice in a row is still a change to announce.
+  announceError = text => {
+    setErrorText("");
+    setTimeout(() => setErrorText(`Error: ${text}`), 50);
+  };
 
   return (
-    <div class="bx-Message" role="status" aria-live="polite" aria-label="Notifications">
-      <For each={messages()}>
-        {item => (
-          <div
-            class="bx-Message-item"
-            data-type={item.type}
-            data-exiting={item.exiting() ? "" : undefined}
-            onPointerEnter={item.pause}
-            onPointerLeave={item.resume}
-          >
-            <span class="bx-Message-icon">{item.icon ?? ICONS[item.type]()}</span>
-            <span class="bx-Message-text">{item.text}</span>
-          </div>
-        )}
-      </For>
-    </div>
+    <>
+      <div class="bx-Message" role="status" aria-live="polite" aria-label="Notifications">
+        <For each={messages()}>
+          {item => (
+            <div
+              class="bx-Message-item"
+              data-type={item.type}
+              data-exiting={item.exiting() ? "" : undefined}
+              onPointerEnter={item.pause}
+              onPointerLeave={item.resume}
+            >
+              {/* An error is read out by the alert region instead, so it isn't heard twice. */}
+              <span
+                class="bx-Message-content"
+                aria-hidden={item.type === "error" ? "true" : undefined}
+              >
+                <span class="bx-Message-icon">{item.icon ?? ICONS[item.type]()}</span>
+                <span class="bx-Message-text">{item.text}</span>
+              </span>
+              <Show when={item.closable}>
+                <button
+                  type="button"
+                  class="bx-Message-close"
+                  aria-label="Close notification"
+                  onClick={item.close}
+                >
+                  <CloseIcon />
+                </button>
+              </Show>
+            </div>
+          )}
+        </For>
+      </div>
+      {/* Errors interrupt, as an alert should; the polite region above waits its turn. */}
+      <div class="bx-visually-hidden" role="alert">
+        {errorText()}
+      </div>
+    </>
   );
 }
 
@@ -68,6 +104,9 @@ interface QueuedMessage {
   text: string;
   icon: JSX.Element | undefined;
   seconds: number;
+  closable: boolean;
+  /** Set once it is on screen; until then, closing just takes it out of the queue. */
+  close?: () => void;
 }
 
 const DEFAULT_LIMIT = 3;
@@ -88,14 +127,25 @@ function show(
   text: string,
   options: number | MessageOptions | undefined,
   defaultSeconds: number
-) {
-  const { seconds = defaultSeconds, icon } =
-    typeof options === "number" ? { seconds: options } : (options ?? {});
-  queue.push({ type, text, icon, seconds });
+): CloseMessage {
+  const {
+    seconds = defaultSeconds,
+    icon,
+    closable = false
+  } = typeof options === "number" ? { seconds: options } : (options ?? {});
+  // One that never leaves on its own must be closable, or it could stay on screen for good.
+  const queued: QueuedMessage = { type, text, icon, seconds, closable: closable || seconds <= 0 };
+  queue.push(queued);
   drain();
+  return () => {
+    if (queued.close) return queued.close();
+    const index = queue.indexOf(queued);
+    if (index >= 0) queue.splice(index, 1);
+  };
 }
 
-function display({ type, text, icon, seconds }: QueuedMessage) {
+function display(queued: QueuedMessage) {
+  const { type, text, icon, seconds, closable } = queued;
   ensureContainer();
   const id = ++idCounter;
   visibleCount++;
@@ -106,10 +156,14 @@ function display({ type, text, icon, seconds }: QueuedMessage) {
     const [exiting, setExiting] = createSignal(false);
     // The duration starts when the message appears, not while it waits in the queue.
     let remaining = Math.max(0, seconds * 1000);
+    const persistent = seconds <= 0;
     let startedAt = 0;
     let dismissTimer: ReturnType<typeof setTimeout> | undefined;
 
     const dismiss = () => {
+      // Closed by the button, by its close function or by the timer: whichever comes first.
+      if (exiting()) return;
+      clearTimeout(dismissTimer);
       dismissTimer = undefined;
       setExiting(true);
       // Its slot frees as it starts leaving, so the next message comes in without a gap.
@@ -122,7 +176,7 @@ function display({ type, text, icon, seconds }: QueuedMessage) {
     };
 
     const resume = () => {
-      if (exiting() || dismissTimer !== undefined) return;
+      if (persistent || exiting() || dismissTimer !== undefined) return;
       startedAt = performance.now();
       dismissTimer = setTimeout(dismiss, remaining);
     };
@@ -136,9 +190,16 @@ function display({ type, text, icon, seconds }: QueuedMessage) {
 
     // The item object is never replaced — only `exiting` (a signal) changes.
     // This keeps <For> from recreating DOM nodes during the exit transition.
-    setMessages!(prev => [...prev, { id, type, text, icon, exiting, pause, resume }]);
-    startedAt = performance.now();
-    dismissTimer = setTimeout(dismiss, remaining);
+    setMessages!(prev => [
+      ...prev,
+      { id, type, text, icon, closable, exiting, pause, resume, close: dismiss }
+    ]);
+    queued.close = dismiss;
+    if (type === "error") announceError!(text);
+    if (!persistent) {
+      startedAt = performance.now();
+      dismissTimer = setTimeout(dismiss, remaining);
+    }
   });
 }
 
@@ -149,21 +210,22 @@ export interface MessageConfig {
 
 /**
  * Short notifications at the top of the screen. The second argument is how long to show the
- * message, in seconds, or `{ seconds, icon }` to also replace its icon. Up to three show at once
- * (see `config`); the rest queue and each appears as an earlier one leaves.
+ * message, in seconds (0 keeps it until closed), or `{ seconds, icon, closable }`. Each call
+ * returns a function that closes the message. Up to three show at once (see `config`); the rest
+ * queue and each appears as an earlier one leaves.
  */
 export const message = {
-  success(text: string, options?: number | MessageOptions) {
-    show("success", text, options, 3);
+  success(text: string, options?: number | MessageOptions): CloseMessage {
+    return show("success", text, options, 3);
   },
-  error(text: string, options?: number | MessageOptions) {
-    show("error", text, options, 6);
+  error(text: string, options?: number | MessageOptions): CloseMessage {
+    return show("error", text, options, 6);
   },
-  warning(text: string, options?: number | MessageOptions) {
-    show("warning", text, options, 4);
+  warning(text: string, options?: number | MessageOptions): CloseMessage {
+    return show("warning", text, options, 4);
   },
-  info(text: string, options?: number | MessageOptions) {
-    show("info", text, options, 3);
+  info(text: string, options?: number | MessageOptions): CloseMessage {
+    return show("info", text, options, 3);
   },
   /** Changes how many messages show at once. */
   config(config: MessageConfig) {

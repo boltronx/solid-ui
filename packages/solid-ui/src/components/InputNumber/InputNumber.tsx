@@ -182,8 +182,9 @@ export function InputNumber(props: InputNumberProps) {
   onFormReset(() => input, state.reset);
 
   const displayValue = () => (focused() ? rawText() : formatNumber(state.value(), decimalConfig()));
+  // While focused, the typed text: Enter submits the form before the blur that commits it.
   const submittedValue = () => {
-    const value = round(state.value());
+    const value = round(focused() ? clamp(parseNumber(rawText())) : state.value());
     return value === null ? "" : String(value);
   };
 

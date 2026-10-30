@@ -1,7 +1,7 @@
 export const meta = {
   title: "Table",
   description:
-    "Fixed columns stay put while the table scrolls sideways. Narrow the window: below 576px of table width, rows become cards."
+    "Fixed columns stay put while the table scrolls sideways. Click a row to open it; the actions menu keeps its own clicks. Narrow the window: below 576px of table width, rows become cards."
 };
 
 import {
@@ -107,5 +107,13 @@ const columns: TableColumn<Order>[] = [
 ];
 
 export default function Demo() {
-  return <Table aria-label="Orders" columns={columns} data={orders} minWidth="48rem" />;
+  return (
+    <Table
+      aria-label="Orders"
+      columns={columns}
+      data={orders}
+      minWidth="48rem"
+      onRowClick={order => message.info(`Opened ${order.id}`)}
+    />
+  );
 }

@@ -1,7 +1,7 @@
 export const meta = {
   title: "DatePicker",
   description:
-    "Click the month to pick a month or year. Arrow keys move, Page Up/Down change month, Backspace clears."
+    "Click the month to pick a month or year. Arrow keys move, Page Up/Down change month. With clearable, Backspace clears."
 };
 
 import { DatePicker, SimpleGrid, toISODate } from "@boltronx/solid-ui";
