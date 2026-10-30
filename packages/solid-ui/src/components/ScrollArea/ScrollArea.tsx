@@ -80,11 +80,15 @@ export function ScrollArea(props: ScrollAreaProps) {
     return true;
   });
 
+  // Read by the scroll listener and resize observer, which have no reactive owner: as a memo, a prop
+  // written as a condition doesn't make Solid create a computation that is never disposed.
+  const scrollbars = createMemo(() => props.scrollbars ?? "xy");
+
   const updateThumbs = () => {
     if (!viewport) return;
     const { scrollTop, scrollLeft, scrollHeight, scrollWidth, clientHeight, clientWidth } =
       viewport;
-    const sb = props.scrollbars ?? "xy";
+    const sb = scrollbars();
 
     const vScroll = sb !== "x" && scrollHeight > clientHeight + 1;
     const hScroll = sb !== "y" && scrollWidth > clientWidth + 1;

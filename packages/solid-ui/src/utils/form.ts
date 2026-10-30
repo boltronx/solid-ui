@@ -1,4 +1,4 @@
-import { type Accessor, createSignal, onCleanup, onMount, untrack } from "solid-js";
+import { type Accessor, createMemo, createSignal, onCleanup, onMount, untrack } from "solid-js";
 
 /**
  * Runs `handler` when the element's form is reset. The reset event fires before the browser
@@ -33,11 +33,13 @@ export function keepControlledOnReset(
   element: Accessor<HTMLInputElement | HTMLTextAreaElement | undefined>,
   value: Accessor<string | number | undefined>
 ) {
+  // Read after a reset, outside any reactive owner; see createControllableSignal.
+  const controlled = createMemo(value);
   onFormReset(element, () => {
-    if (value() === undefined) return;
+    if (controlled() === undefined) return;
     afterFormReset(() => {
       const el = element();
-      const current = value();
+      const current = controlled();
       if (el && current !== undefined) el.value = String(current);
     });
   });
@@ -51,14 +53,19 @@ export function createControllableSignal<T>(options: {
   value: Accessor<T | undefined>;
   defaultValue: Accessor<T>;
 }) {
-  const [internal, setInternal] = createSignal<T>(untrack(options.defaultValue));
-  const isControlled = () => options.value() !== undefined;
-  const value = () => (isControlled() ? (options.value() as T) : internal());
+  // Memos, made with the component: the value is read in event handlers and on form reset, which
+  // have no reactive owner, and reading a prop written as a condition (`value={a() ? b : c}`)
+  // there would make Solid create a computation that is never disposed.
+  const controlled = createMemo(options.value);
+  const defaultValue = createMemo(options.defaultValue);
+  const [internal, setInternal] = createSignal<T>(untrack(defaultValue));
+  const isControlled = () => controlled() !== undefined;
+  const value = () => (isControlled() ? (controlled() as T) : internal());
   /** Stores the value when uncontrolled; a controlled parent applies it through `value`. */
   const setValue = (next: T) => {
     if (!untrack(isControlled)) setInternal(() => next);
   };
-  const reset = () => setValue(untrack(options.defaultValue));
+  const reset = () => setValue(untrack(defaultValue));
   return { value, setValue, reset, isControlled };
 }
 

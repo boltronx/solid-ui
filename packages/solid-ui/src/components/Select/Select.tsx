@@ -98,7 +98,11 @@ export function Select(props: SelectProps) {
   const optionId = (index: number) => `${listboxId()}-${index}`;
   // The combobox is a div, which a <label for> cannot name, so the label is linked by id instead.
   const labelId = () => `${controlId()}-label`;
-  const isMultiple = () => props.multiple === true;
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`disabled={a() && b()}`) there would make Solid create a computation
+  // that is never disposed.
+  const isMultiple = createMemo(() => props.multiple === true);
+  const disabled = createMemo(() => props.disabled === true);
   const isReadOnly = useReadOnly(() => props.readOnly === true);
   const [open, setOpen] = createSignal(false);
   const [search, setSearch] = createSignal("");
@@ -145,7 +149,7 @@ export function Select(props: SelectProps) {
   });
 
   createEffect(() => {
-    if (!props.disabled && !isReadOnly()) return;
+    if (!disabled() && !isReadOnly()) return;
     setOpen(false);
     setSearch("");
   });
@@ -171,7 +175,7 @@ export function Select(props: SelectProps) {
       ? optionId(activeIndex())
       : undefined;
 
-  const showsChips = () => isMultiple() && !props.ellipsis;
+  const showsChips = createMemo(() => isMultiple() && !props.ellipsis);
 
   const displayValue = createMemo(() => {
     if (showsChips()) return "";
@@ -195,7 +199,7 @@ export function Select(props: SelectProps) {
   };
 
   const openDropdown = () => {
-    if (props.disabled || isReadOnly()) return;
+    if (disabled() || isReadOnly()) return;
     setOpen(true);
     props.onDropdownOpen?.();
     const selectedIndex = visibleOptions().findIndex(option =>
@@ -210,7 +214,7 @@ export function Select(props: SelectProps) {
   };
 
   const pick = (option: SelectOption) => {
-    if (props.disabled || isReadOnly() || option.disabled) return;
+    if (disabled() || isReadOnly() || option.disabled) return;
     const current = selectedValues();
     if (isMultiple()) {
       commit(
@@ -236,12 +240,14 @@ export function Select(props: SelectProps) {
     );
   };
 
-  const canClear = () =>
-    props.clearable === true &&
-    !showsChips() &&
-    !props.disabled &&
-    !isReadOnly() &&
-    selectedValues().length > 0;
+  const canClear = createMemo(
+    () =>
+      props.clearable === true &&
+      !showsChips() &&
+      !disabled() &&
+      !isReadOnly() &&
+      selectedValues().length > 0
+  );
 
   const clearValue = () => {
     const option = optionCache().find(item => item.value === selectedValues()[0]);
@@ -251,7 +257,7 @@ export function Select(props: SelectProps) {
   };
 
   const handleKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = event => {
-    if (props.disabled || isReadOnly()) return;
+    if (disabled() || isReadOnly()) return;
     // A chip's remove button keeps its own Enter and Space, which bubble up from inside the field.
     if ((event.target as Element).closest(".bx-Select-chipRemove")) return;
     if (!open() && (event.key === "Backspace" || event.key === "Delete") && canClear()) {

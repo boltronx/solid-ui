@@ -118,3 +118,39 @@ describe("Checkbox row clicks", () => {
     expect(box).toBeChecked();
   });
 });
+
+describe("Checkbox props written as conditions", () => {
+  it("doesn't create computations outside a root when its handlers read them", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const toppings = ["Cheese", "Olives"];
+      const [picked, setPicked] = createSignal<string[]>(["Cheese"]);
+      const [locked] = createSignal(false);
+      const all = () => picked().length === toppings.length;
+      render(() => (
+        <>
+          <Checkbox
+            label="All toppings"
+            checked={all()}
+            // A condition, which Solid compiles into a getter that creates a memo per read.
+            indeterminate={picked().length > 0 && !all()}
+            readOnly={locked() && all()}
+            disabled={locked() || picked().length > 5}
+            onChange={() => setPicked(all() ? [] : toppings)}
+          />
+          <Checkbox label="Keep" readOnly={locked() && picked().length > 9} />
+        </>
+      ));
+      await userEvent.click(screen.getByRole("checkbox", { name: "All toppings" }));
+      expect(screen.getByRole("checkbox", { name: "All toppings" })).toBeChecked();
+      await userEvent.click(screen.getByText("All toppings").closest(".bx-Checkbox")!);
+      await userEvent.click(screen.getByRole("checkbox", { name: "Keep" }));
+      const leaks = warn.mock.calls.filter(call =>
+        String(call[0]).includes("outside a `createRoot`")
+      );
+      expect(leaks).toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});

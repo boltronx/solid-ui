@@ -158,8 +158,12 @@ export function Table<T>(props: TableProps<T>) {
     setCanScrollRight(maxScroll - viewport.scrollLeft > 2 && edges().right >= 0);
   }
 
+  // Read by the resize observer, which has no reactive owner: as a memo, a prop written as a
+  // condition doesn't make Solid create a computation that is never disposed.
+  const stackBelow = createMemo(() => props.stackBelow ?? 576);
+
   function measure() {
-    if (root) setStacked(root.getBoundingClientRect().width < (props.stackBelow ?? 576));
+    if (root) setStacked(root.getBoundingClientRect().width < stackBelow());
     measureOffsets();
     measureScroll();
   }

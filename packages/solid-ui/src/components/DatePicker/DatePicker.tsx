@@ -135,15 +135,23 @@ export function DatePicker(props: DatePickerProps) {
     );
   });
 
-  const inactive = () => props.disabled || isReadOnly();
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`min={a() ? b : c}`) there would make Solid create a computation that
+  // is never disposed.
+  const inactive = createMemo(() => props.disabled === true || isReadOnly());
+  const range = createMemo(() => ({
+    min: props.min,
+    max: props.max,
+    excludeDate: props.excludeDate
+  }));
   createEffect(() => {
     if (inactive()) setOpen(false);
   });
 
-  const outOfRange = (iso: string) =>
-    (!!props.min && iso < props.min) ||
-    (!!props.max && iso > props.max) ||
-    !!props.excludeDate?.(iso);
+  const outOfRange = (iso: string) => {
+    const { min, max, excludeDate } = range();
+    return (!!min && iso < min) || (!!max && iso > max) || !!excludeDate?.(iso);
+  };
   /** Whether no day of the month of `iso` can be picked. */
   const monthOutOfRange = (iso: string) =>
     (!!props.min && iso.slice(0, 7) < props.min.slice(0, 7)) ||
@@ -292,7 +300,7 @@ export function DatePicker(props: DatePickerProps) {
     const text = format(value());
     return props.prefix && text ? `${props.prefix} ${text}` : text;
   };
-  const canClear = () => props.clearable === true && !!value() && !inactive();
+  const canClear = createMemo(() => props.clearable === true && !!value() && !inactive());
 
   return (
     <div

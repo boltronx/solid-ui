@@ -2,6 +2,7 @@ import type { Accessor, JSX } from "solid-js";
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   createUniqueId,
   onCleanup,
@@ -277,8 +278,11 @@ export interface MenuItemProps extends BaseProps {
 
 export function MenuItem(props: MenuItemProps) {
   const menu = useContext(MenuContext);
+  // Read by the click handler, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const disabled = createMemo(() => props.disabled === true);
   const activate = (event: MouseEvent) => {
-    if (props.disabled) {
+    if (disabled()) {
       event.preventDefault();
       event.stopPropagation();
       return;

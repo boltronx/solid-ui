@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createEffect, createUniqueId, splitProps } from "solid-js";
+import { createEffect, createMemo, createUniqueId, splitProps } from "solid-js";
 
 import { afterFormReset, onFormReset } from "../../utils/form";
 import { type BaseProps, cx } from "../../utils/style";
@@ -79,11 +79,17 @@ export function CheckboxControl(props: CheckboxControlProps) {
   const generatedId = createUniqueId();
   const inputId = () => local.id ?? `bx-${local.variant}-${generatedId}`;
   const isReadOnly = useReadOnly(() => local.readOnly === true);
+  // Props the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`indeterminate={some() && !all()}`) there would make Solid create a
+  // computation that is never disposed.
+  const indeterminate = createMemo(() => local.indeterminate === true);
+  const checked = createMemo(() => rest.checked);
+  const disabled = createMemo(() => rest.disabled === true);
   let input: HTMLInputElement | undefined;
 
   // `indeterminate` is a DOM property with no HTML attribute, so it is set on the element.
   createEffect(() => {
-    if (input) input.indeterminate = local.indeterminate === true;
+    if (input) input.indeterminate = indeterminate();
   });
 
   // A controlled box shows the parent's state, so a click or a reset is undone once it finishes.
@@ -97,7 +103,7 @@ export function CheckboxControl(props: CheckboxControlProps) {
   };
   onFormReset(
     () => input,
-    () => restore(rest.checked, afterFormReset)
+    () => restore(checked(), afterFormReset)
   );
 
   const control = (
@@ -127,10 +133,10 @@ export function CheckboxControl(props: CheckboxControlProps) {
       }}
       onChange={event => {
         // The click has cleared `indeterminate`; like `checked`, it stays what the parent says.
-        if (local.indeterminate) event.currentTarget.indeterminate = true;
+        if (indeterminate()) event.currentTarget.indeterminate = true;
         rest.onChange?.(event);
         // Read after onChange, so a parent that updates right away keeps the new state.
-        restore(rest.checked);
+        restore(checked());
       }}
     />
   );
@@ -148,7 +154,7 @@ export function CheckboxControl(props: CheckboxControlProps) {
         // The whole row toggles, not just the box and its label, except for a click that is a
         // control's own, e.g. a link to the terms in the description.
         if ((event.target as HTMLElement).closest(ROW_CLICK_EXCLUDED)) return;
-        if (rest.disabled || isReadOnly()) return;
+        if (disabled() || isReadOnly()) return;
         input?.click();
       }}
     >

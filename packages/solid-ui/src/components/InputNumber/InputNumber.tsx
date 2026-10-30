@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createSignal, splitProps } from "solid-js";
+import { createMemo, createSignal, splitProps } from "solid-js";
 
 import { createDebouncedCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
@@ -162,13 +162,18 @@ export function InputNumber(props: InputNumberProps) {
     "inputClass"
   ]);
 
-  const decimalConfig = () =>
-    resolveDecimals(local.decimals, local.currency ? { min: 2, max: 3 } : undefined);
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`max={a() ? b : c}`) there would make Solid create a computation that
+  // is never disposed.
+  const decimalConfig = createMemo(() =>
+    resolveDecimals(local.decimals, local.currency ? { min: 2, max: 3 } : undefined)
+  );
+  const limits = createMemo(() => ({ min: resolveLimit(local.min), max: resolveLimit(local.max) }));
+  const reportsInput = createMemo(() => local.onInput !== undefined);
   const maxDecimals = () => decimalConfig().max;
   const clamp = (n: number | null) => {
     if (n === null) return null;
-    const min = resolveLimit(local.min);
-    const max = resolveLimit(local.max);
+    const { min, max } = limits();
     if (min !== undefined && n < min) return min;
     if (max !== undefined && n > max) return max;
     return n;
@@ -182,8 +187,7 @@ export function InputNumber(props: InputNumberProps) {
     const decimals = maxDecimals();
     const rounded = roundNumber(clamp(n)!, decimals);
     const factor = 10 ** decimals;
-    const min = resolveLimit(local.min);
-    const max = resolveLimit(local.max);
+    const { min, max } = limits();
     if (max !== undefined && rounded > max)
       return Math.floor(stripFloatNoise(max * factor)) / factor;
     if (min !== undefined && rounded < min)
@@ -243,7 +247,7 @@ export function InputNumber(props: InputNumberProps) {
       return;
     }
     setRawText(text);
-    if (local.onInput) debouncedInput.schedule(clamp(parseNumber(text)));
+    if (reportsInput()) debouncedInput.schedule(clamp(parseNumber(text)));
   };
 
   return (

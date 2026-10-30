@@ -112,10 +112,15 @@ export function Autocomplete(props: AutocompleteProps) {
     minLength: () => props.onSearchChangeMinLength
   });
   // Too short to search the server: the dropdown asks for more instead of showing stale options.
-  const hint = () =>
+  const hint = createMemo(() =>
     props.onSearchChange && serverSearch.tooShort(text.value())
       ? minLengthHint(props.onSearchChangeMinLength, props.searchMinLengthMessage)
-      : undefined;
+      : undefined
+  );
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`disabled={a() && b()}`) there would make Solid create a computation
+  // that is never disposed.
+  const disabled = createMemo(() => props.disabled === true);
 
   const visibleOptions = createMemo(() => {
     const search = text.value().trim().toLocaleLowerCase();
@@ -128,9 +133,12 @@ export function Autocomplete(props: AutocompleteProps) {
   const firstEnabledIndex = () => visibleOptions().findIndex(option => !option.disabled);
   // Open only with something to show: suggestions, the min-length hint, or a nothing-found
   // message the app asked for (not while a search that may still find something is running).
-  const showNothingFound = () =>
-    visibleOptions().length === 0 && props.nothingFoundMessage !== undefined && !props.loading;
-  const panelOpen = () => open() && (visibleOptions().length > 0 || !!hint() || showNothingFound());
+  const showNothingFound = createMemo(
+    () => visibleOptions().length === 0 && props.nothingFoundMessage !== undefined && !props.loading
+  );
+  const panelOpen = createMemo(
+    () => open() && (visibleOptions().length > 0 || !!hint() || showNothingFound())
+  );
 
   // Nothing is highlighted until the arrow keys move there: the field takes free text, so Enter
   // must keep what was typed rather than swap in the first suggestion.
@@ -140,7 +148,7 @@ export function Autocomplete(props: AutocompleteProps) {
   });
 
   const openDropdown = () => {
-    if (props.disabled || isReadOnly()) return;
+    if (disabled() || isReadOnly()) return;
     setOpen(true);
   };
 
@@ -184,7 +192,7 @@ export function Autocomplete(props: AutocompleteProps) {
 
   const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = event => {
     if (typeof props.onKeyDown === "function") props.onKeyDown(event);
-    if (event.defaultPrevented || props.disabled || isReadOnly()) return;
+    if (event.defaultPrevented || disabled() || isReadOnly()) return;
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();

@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js";
 import {
   createEffect,
+  createMemo,
   createSignal,
   createUniqueId,
   onCleanup,
@@ -81,19 +82,25 @@ export function Textarea(props: TextareaProps) {
   // of a controlled value) would rewrite the DOM and move what a reset restores.
   const initialText = untrack(() => local.value ?? local.defaultValue);
   let textarea: HTMLTextAreaElement | undefined;
+  // What the native listeners and the resize observer read, as memos: they have no reactive owner,
+  // and reading a prop written as a condition (`maxRows={a() ? 4 : 8}`) there would make Solid
+  // create a computation that is never disposed.
+  const autoSize = createMemo(() => local.autoSize === true);
+  const maxRows = createMemo(() => local.maxRows);
+  const submitOnEnter = createMemo(() => local.submitOnEnter === true);
 
   /** Sizes the box to its content, borders included since the box is border-box. */
   function fit() {
     const el = textarea;
-    if (!el || !local.autoSize) return;
+    if (!el || !autoSize()) return;
     el.style.height = "auto";
     let height = el.scrollHeight + el.offsetHeight - el.clientHeight;
     let overflow = false;
-    if (local.maxRows) {
+    if (maxRows()) {
       // With height auto the box is exactly `rows` tall, so borrowing maxRows measures the cap in
       // the box's own font and padding.
       const rows = el.rows;
-      el.rows = local.maxRows;
+      el.rows = maxRows()!;
       const max = el.offsetHeight;
       el.rows = rows;
       overflow = height > max;
@@ -141,7 +148,7 @@ export function Textarea(props: TextareaProps) {
           });
           el.addEventListener("keydown", event => {
             // Enter that confirms an IME composition is not a submit.
-            if (!local.submitOnEnter || event.key !== "Enter" || event.shiftKey) return;
+            if (!submitOnEnter() || event.key !== "Enter" || event.shiftKey) return;
             if (isCompositionKey(event)) return;
             event.preventDefault();
             if (el.form) submitImplicitly(el.form);

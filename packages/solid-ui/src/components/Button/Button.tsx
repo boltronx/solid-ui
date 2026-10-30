@@ -1,4 +1,4 @@
-import { type JSX, splitProps } from "solid-js";
+import { createMemo, type JSX, splitProps } from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
 import { Loader } from "../Loader/Loader";
@@ -40,11 +40,14 @@ export function Button(props: ButtonProps) {
     "onClick"
   ]);
   const variant = () => local.variant ?? "default";
+  // Read by the click handler, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const loading = createMemo(() => local.loading === true);
 
   // A loading button stays enabled, so it keeps focus (a disabled one would drop a keyboard user
   // to <body>); its clicks, and the form submits they would start, are blocked here instead.
   const handleClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = event => {
-    if (local.loading) {
+    if (loading()) {
       event.preventDefault();
       event.stopPropagation();
       return;

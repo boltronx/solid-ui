@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
 import { Button } from "../Button/Button";
@@ -29,6 +29,9 @@ export interface PaginationProps extends BaseProps {
 
 export function Pagination(props: PaginationProps) {
   const totalPages = () => Math.max(1, props.totalPages);
+  // Read by the click handlers, which have no reactive owner: as a memo, a prop written as a
+  // condition (`page={a() ?? 1}`) doesn't make Solid create a computation that is never disposed.
+  const page = createMemo(() => props.page);
 
   return (
     <nav
@@ -39,7 +42,7 @@ export function Pagination(props: PaginationProps) {
       <Button
         disabled={props.page <= 1}
         aria-label="Previous page"
-        onClick={() => props.onChange(props.page - 1)}
+        onClick={() => props.onChange(page() - 1)}
       >
         ← Prev
       </Button>
@@ -78,7 +81,7 @@ export function Pagination(props: PaginationProps) {
       <Button
         disabled={props.page >= totalPages()}
         aria-label="Next page"
-        onClick={() => props.onChange(props.page + 1)}
+        onClick={() => props.onChange(page() + 1)}
       >
         Next →
       </Button>

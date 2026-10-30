@@ -2,6 +2,7 @@ import type { Accessor, JSX } from "solid-js";
 import {
   children,
   createEffect,
+  createMemo,
   createSignal,
   getOwner,
   onCleanup,
@@ -144,8 +145,21 @@ export function FloatingPanel(props: FloatingPanelProps) {
     position: "bottom"
   });
 
+  // What placing reads, as one memo: updatePosition runs in an animation frame, with no reactive
+  // owner, and reading a prop written as a condition (`position={a() ? "top" : "bottom"}`) there
+  // would make Solid create a computation that is never disposed.
+  const placement = createMemo(() => ({
+    target: props.target,
+    padding: props.viewportPadding ?? 8,
+    matchTargetWidth: props.matchTargetWidth === true,
+    minWidth: props.minWidth ?? 0,
+    gap: props.gap ?? 4,
+    position: props.position ?? "bottom"
+  }));
+
   const updatePosition = () => {
-    const target = props.target();
+    const options = placement();
+    const target = options.target();
     if (!target || !panelRef) return;
 
     const targetRect = target.getBoundingClientRect();
@@ -155,16 +169,16 @@ export function FloatingPanel(props: FloatingPanelProps) {
     }
 
     const panelRect = panelRef.getBoundingClientRect();
-    const padding = props.viewportPadding ?? 8;
-    const matchedWidth = props.matchTargetWidth
-      ? Math.min(Math.max(targetRect.width, props.minWidth ?? 0), window.innerWidth - padding * 2)
+    const padding = options.padding;
+    const matchedWidth = options.matchTargetWidth
+      ? Math.min(Math.max(targetRect.width, options.minWidth), window.innerWidth - padding * 2)
       : undefined;
     const measuredPanel = {
       width: matchedWidth ?? panelRect.width,
       height: panelRect.height
     };
-    const gap = props.gap ?? 4;
-    const preferred = props.position ?? "bottom";
+    const gap = options.gap;
+    const preferred = options.position;
     const preferredSide = preferred.split("-")[0];
     const spaces = {
       bottom: window.innerHeight - targetRect.bottom - gap - padding,

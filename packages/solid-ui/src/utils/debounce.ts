@@ -1,4 +1,4 @@
-import { onCleanup } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 
 export interface DebouncedCall<T> {
   /** Calls after the delay, replacing a call still waiting. */
@@ -20,6 +20,10 @@ export function createDebouncedCall<T>(
   callback: () => ((value: T, signal: AbortSignal) => void) | undefined,
   delay: () => number
 ): DebouncedCall<T> {
+  // Read in timers and event handlers, which have no reactive owner: as memos, made here, a prop
+  // written as a condition doesn't make Solid create a computation that is never disposed.
+  const currentCallback = createMemo(callback);
+  const currentDelay = createMemo(delay);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let controller: AbortController | undefined;
 
@@ -32,12 +36,12 @@ export function createDebouncedCall<T>(
     drop();
     controller?.abort();
     controller = new AbortController();
-    callback()?.(value, controller.signal);
+    currentCallback()?.(value, controller.signal);
   };
 
   const schedule = (value: T) => {
     drop();
-    const ms = Math.max(0, delay());
+    const ms = Math.max(0, currentDelay());
     if (ms === 0) now(value);
     else timer = setTimeout(() => now(value), ms);
   };
@@ -69,6 +73,7 @@ export function createSearchCall(options: {
   // Starts as "": the options a component is given are the ones for an empty search. So closing a
   // dropdown that was never searched, or typing back to the sent text, doesn't call again.
   let lastSent: string | undefined = "";
+  const minLength = createMemo(options.minLength);
   const call = createDebouncedCall<string>(
     () => {
       const callback = options.callback();
@@ -83,7 +88,7 @@ export function createSearchCall(options: {
 
   const tooShort = (value: string) => {
     const length = value.trim().length;
-    return length > 0 && length < (options.minLength() ?? 0);
+    return length > 0 && length < (minLength() ?? 0);
   };
 
   /** True when this value should not be sent, after handling why. */
