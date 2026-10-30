@@ -41,4 +41,16 @@ describe("Avatar", () => {
     expect(eve.style.backgroundColor).toBe("");
     expect(eve.style.backgroundImage).toBe("");
   });
+
+  it("drops a color whose quoted string a newline ends early", () => {
+    render(() => (
+      <Avatar
+        label="Eve"
+        color={'"red\n; background-image: url(https://example.test/track); --tail: "'}
+      />
+    ));
+    const eve = screen.getByRole("img", { name: "Eve" });
+    expect(eve.getAttribute("style") ?? "").not.toContain("background-image");
+    expect(eve.style.backgroundImage).toBe("");
+  });
 });

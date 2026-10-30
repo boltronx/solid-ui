@@ -68,6 +68,22 @@ describe("InputNumber", () => {
     expect(input).toHaveValue("3");
   });
 
+  it("restores defaultValue on a form reset while still being edited", async () => {
+    const { data, reset } = renderInForm(() => (
+      <InputNumber label="Qty" name="qty" defaultValue={3} />
+    ));
+    const input = screen.getByLabelText("Qty");
+    await userEvent.clear(input);
+    await userEvent.type(input, "8");
+    expect(data().get("qty")).toBe("8");
+    await reset();
+    expect(input).toHaveFocus();
+    expect(data().get("qty")).toBe("3");
+    expect(input).toHaveValue("3");
+    await userEvent.tab();
+    expect(data().get("qty")).toBe("3");
+  });
+
   it("never turns a decimal comma into a larger number", async () => {
     const onChange = vi.fn();
     const { data } = renderInForm(() => <InputNumber label="Qty" name="qty" onChange={onChange} />);

@@ -91,6 +91,24 @@ describe("Table", () => {
     expect(onRowClick).toHaveBeenCalledTimes(2);
   });
 
+  it("reports cell clicks inside a focusable container, e.g. a Modal's dialog", async () => {
+    const onRowClick = vi.fn();
+    render(() => (
+      <section tabindex="-1">
+        <Table
+          columns={columns}
+          data={orders}
+          stackBelow={0}
+          onRowClick={onRowClick}
+          rowLabel={order => `Open order ${order.id}`}
+        />
+      </section>
+    ));
+    await userEvent.click(screen.getByText("Grace"));
+    expect(onRowClick).toHaveBeenCalledOnce();
+    expect(onRowClick).toHaveBeenLastCalledWith(orders[1], expect.anything());
+  });
+
   it("puts the row action in a cell the stacked layout still shows", () => {
     const withHiddenFirst: TableColumn<Order>[] = [
       { header: "Id", render: order => order.id, stacked: "hidden" },

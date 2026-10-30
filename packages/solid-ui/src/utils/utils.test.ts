@@ -51,6 +51,17 @@ describe("mergeStyle", () => {
     }
   });
 
+  it("drops values whose quoted string is ended early by a newline", () => {
+    // CSS ends a string at an unescaped newline, so what follows would be a declaration.
+    for (const newline of ["\n", "\r", "\r\n", "\f"]) {
+      const value = `"red${newline}; background-image: url(https://example.test/track); --tail: "`;
+      expect(mergeStyle(undefined, { color: value, gap: "1px" })).toBe("gap: 1px");
+      expect(mergeStyle({ color: value }, {})).toBeUndefined();
+    }
+    // An escaped newline continues the string.
+    expect(mergeStyle(undefined, { content: '"a\\\nb"' })).toBe('content: "a\\\nb"');
+  });
+
   it("drops property names that would add declarations of their own", () => {
     for (const key of ["color: red; background", "color}body{display", "--x;y", "a b"]) {
       expect(mergeStyle({ [key]: "none" } as never, { gap: "1px" })).toBe("gap: 1px");

@@ -1,8 +1,12 @@
-import { fireEvent, screen } from "@solidjs/testing-library";
+import { fireEvent, screen, within } from "@solidjs/testing-library";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { message } from "./Message";
+
+/** A message's text on screen, not the copy a live region announces. */
+const shownText = (text: string) => screen.getByText(text, { selector: ".bx-Message-text" });
+const queryShownText = (text: string) => screen.queryByText(text, { selector: ".bx-Message-text" });
 
 // The container is created once and lives on document.body, outside the per-test cleanup, so
 // every test waits for its own messages to leave.
@@ -18,40 +22,75 @@ describe("message", () => {
 
   it("announces messages in a polite live region", () => {
     message.success("Saved");
-    const region = screen.getByRole("status", { name: "Notifications" });
-    expect(region).toHaveAttribute("aria-live", "polite");
-    expect(region).toHaveTextContent("Saved");
-    expect(screen.getByText("Saved").closest(".bx-Message-item")).toHaveAttribute(
-      "data-type",
-      "success"
-    );
+    vi.advanceTimersByTime(50);
+    const status = screen.getByRole("status", { name: "Notifications" });
+    expect(status).toHaveTextContent("Saved");
+    expect(screen.getByRole("alert")).toHaveTextContent("");
+    const item = within(screen.getByRole("region", { name: "Notifications" }))
+      .getByText("Saved")
+      .closest(".bx-Message-item");
+    expect(item).toHaveAttribute("data-type", "success");
   });
 
-  it("announces errors as an alert, read once", () => {
+  it("announces errors as an alert, and only there", () => {
     message.error("Payment failed");
     vi.advanceTimersByTime(50);
     expect(screen.getByRole("alert")).toHaveTextContent("Error: Payment failed");
-    expect(screen.getByText("Payment failed").closest(".bx-Message-content")).toHaveAttribute(
-      "aria-hidden",
-      "true"
-    );
+    expect(screen.getByRole("status", { name: "Notifications" })).toHaveTextContent("");
+    // The list on screen isn't a live region, so its text isn't announced a second time.
+    const list = screen.getByRole("region", { name: "Notifications" });
+    expect(list.closest("[aria-live], [role='status'], [role='alert'], [role='log']")).toBeNull();
+  });
+
+  it("keeps every error on screen readable, after its announcement has gone", () => {
+    message.error("Payment failed", 0);
+    message.error("Address invalid", 0);
+    vi.advanceTimersByTime(50);
+    expect(screen.getByRole("alert")).toHaveTextContent("Error: Payment failed");
+    expect(screen.getByRole("alert")).toHaveTextContent("Error: Address invalid");
+
+    vi.advanceTimersByTime(10_000);
+    expect(screen.getByRole("alert")).toHaveTextContent("");
+    const list = screen.getByRole("region", { name: "Notifications" });
+    for (const text of ["Payment failed", "Address invalid"]) {
+      const shown = within(list).getByText(text);
+      expect(shown.closest("[aria-hidden]")).toBeNull();
+      // Its close button says which one it closes.
+      expect(
+        within(shown.closest(".bx-Message-item") as HTMLElement).getByRole("button", {
+          name: "Close notification",
+          description: text
+        })
+      ).toBeInTheDocument();
+    }
+    for (const button of screen.getAllByRole("button", { name: "Close notification" })) {
+      fireEvent.click(button);
+    }
+  });
+
+  it("announces the same error twice in a row", () => {
+    message.error("Retry failed");
+    vi.advanceTimersByTime(50);
+    message.error("Retry failed");
+    vi.advanceTimersByTime(50);
+    expect(within(screen.getByRole("alert")).getAllByText("Error: Retry failed")).toHaveLength(2);
   });
 
   it("leaves after its duration, with an exit transition first", () => {
     message.info("Heads up", 2);
-    const item = screen.getByText("Heads up").closest(".bx-Message-item")!;
+    const item = shownText("Heads up").closest(".bx-Message-item")!;
 
     vi.advanceTimersByTime(1999);
     expect(item).not.toHaveAttribute("data-exiting");
     vi.advanceTimersByTime(1);
     expect(item).toHaveAttribute("data-exiting");
     vi.advanceTimersByTime(320);
-    expect(screen.queryByText("Heads up")).toBeNull();
+    expect(queryShownText("Heads up")).toBeNull();
   });
 
   it("pauses while the pointer is over it and resumes with the time left", () => {
     message.error("Failed", 2);
-    const item = screen.getByText("Failed").closest(".bx-Message-item")!;
+    const item = shownText("Failed").closest(".bx-Message-item")!;
 
     vi.advanceTimersByTime(1500);
     fireEvent.pointerEnter(item);
@@ -67,7 +106,7 @@ describe("message", () => {
 
   it("pauses while focus is inside it, as it does for the pointer", () => {
     message.success("Saved", { seconds: 2, closable: true });
-    const item = screen.getByText("Saved").closest(".bx-Message-item")!;
+    const item = shownText("Saved").closest(".bx-Message-item")!;
     const close = screen.getByRole("button", { name: "Close notification" });
 
     vi.advanceTimersByTime(1500);
@@ -91,8 +130,8 @@ describe("message", () => {
   it("stays with Infinity or a duration longer than a timer can hold", () => {
     const closeForever = message.info("Forever", Infinity);
     const closeMonth = message.info("A month", 30 * 24 * 60 * 60);
-    const forever = screen.getByText("Forever").closest(".bx-Message-item")!;
-    const month = screen.getByText("A month").closest(".bx-Message-item")!;
+    const forever = shownText("Forever").closest(".bx-Message-item")!;
+    const month = shownText("A month").closest(".bx-Message-item")!;
     vi.advanceTimersByTime(60_000);
     expect(forever).not.toHaveAttribute("data-exiting");
     expect(month).not.toHaveAttribute("data-exiting");
@@ -106,22 +145,20 @@ describe("message", () => {
     message.success("Done");
     message.error("Broken");
     vi.advanceTimersByTime(3000);
-    expect(screen.getByText("Done").closest(".bx-Message-item")).toHaveAttribute("data-exiting");
-    expect(screen.getByText("Broken").closest(".bx-Message-item")).not.toHaveAttribute(
-      "data-exiting"
-    );
+    expect(shownText("Done").closest(".bx-Message-item")).toHaveAttribute("data-exiting");
+    expect(shownText("Broken").closest(".bx-Message-item")).not.toHaveAttribute("data-exiting");
   });
 
   it("shows three at a time and queues the rest, each timed from when it appears", () => {
     for (const n of [1, 2, 3, 4, 5]) message.info(`Message ${n}`, 2);
-    expect(screen.getByText("Message 3")).toBeInTheDocument();
-    expect(screen.queryByText("Message 4")).toBeNull();
+    expect(shownText("Message 3")).toBeInTheDocument();
+    expect(queryShownText("Message 4")).toBeNull();
 
     // The first three leave together; the queued two come in as they start leaving.
     vi.advanceTimersByTime(2000);
-    expect(screen.getByText("Message 4")).toBeInTheDocument();
-    expect(screen.getByText("Message 5")).toBeInTheDocument();
-    const fourth = screen.getByText("Message 4").closest(".bx-Message-item")!;
+    expect(shownText("Message 4")).toBeInTheDocument();
+    expect(shownText("Message 5")).toBeInTheDocument();
+    const fourth = shownText("Message 4").closest(".bx-Message-item")!;
     expect(fourth).not.toHaveAttribute("data-exiting");
 
     // Its own two seconds, not two seconds from when it was queued.
@@ -136,9 +173,9 @@ describe("message", () => {
     try {
       message.success("First", 2);
       message.success("Second", 2);
-      expect(screen.queryByText("Second")).toBeNull();
+      expect(queryShownText("Second")).toBeNull();
       vi.advanceTimersByTime(2000);
-      expect(screen.getByText("Second")).toBeInTheDocument();
+      expect(shownText("Second")).toBeInTheDocument();
     } finally {
       message.config({ limit: 3 });
     }
@@ -146,14 +183,14 @@ describe("message", () => {
 
   it("shows a close button when closable", () => {
     message.success("Saved", { closable: true });
-    const item = screen.getByText("Saved").closest(".bx-Message-item")!;
+    const item = shownText("Saved").closest(".bx-Message-item")!;
     fireEvent.click(screen.getByRole("button", { name: "Close notification" }));
     expect(item).toHaveAttribute("data-exiting");
   });
 
   it("stays until closed with 0 seconds, and is then closable", () => {
     message.warning("Connection lost", 0);
-    const item = screen.getByText("Connection lost").closest(".bx-Message-item")!;
+    const item = shownText("Connection lost").closest(".bx-Message-item")!;
     fireEvent.pointerEnter(item);
     fireEvent.pointerLeave(item);
     vi.advanceTimersByTime(60_000);
@@ -171,8 +208,8 @@ describe("message", () => {
       closeQueued();
       closeUploading();
       closeUploading();
-      expect(screen.getByText("Next")).toBeInTheDocument();
-      expect(screen.queryByText("Queued")).toBeNull();
+      expect(shownText("Next")).toBeInTheDocument();
+      expect(queryShownText("Queued")).toBeNull();
       closeNext();
     } finally {
       message.config({ limit: 3 });

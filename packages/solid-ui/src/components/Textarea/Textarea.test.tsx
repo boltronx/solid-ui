@@ -1,4 +1,4 @@
-import { screen } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -95,5 +95,56 @@ describe("Textarea submitOnEnter with a submit button", () => {
     form.addEventListener("submit", onSubmit);
     await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("submits through an image button that comes first, which form.elements leaves out", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Textarea label="Message" submitOnEnter />
+        <input type="image" alt="Send" src="data:," formaction="/send" />
+        <Button type="submit">Save</Button>
+      </>
+    ));
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]![0].submitter).toBe(screen.getByRole("button", { name: "Send" }));
+  });
+
+  it("does nothing when the default button is a disabled image button", async () => {
+    const { form } = renderInForm(() => (
+      <>
+        <Textarea label="Message" submitOnEnter />
+        <input type="image" alt="Send" src="data:," disabled />
+        <Button type="submit">Save</Button>
+      </>
+    ));
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("finds a submit button that joins the form from outside it", async () => {
+    render(() => (
+      <>
+        <form id="chat">
+          <Textarea label="Message" submitOnEnter />
+        </form>
+        <button type="submit" form="other">
+          Elsewhere
+        </button>
+        <button type="submit" form="chat">
+          Send
+        </button>
+      </>
+    ));
+    const form = document.getElementById("chat") as HTMLFormElement;
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    form.addEventListener("submit", onSubmit);
+    await userEvent.type(screen.getByLabelText("Message"), "hello{Enter}");
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]![0].submitter).toBe(screen.getByRole("button", { name: "Send" }));
   });
 });

@@ -38,9 +38,12 @@ const MAX_DELAY = 2 ** 31 - 1;
 /** Whether a message with this duration stays until it is closed. */
 const isPersistent = (seconds: number) => !Number.isFinite(seconds) || seconds <= 0;
 
+/** How long an announcement stays in its live region, long enough for a screen reader to read it. */
+const ANNOUNCEMENT_MS = 7000;
+
 let idCounter = 0;
 let setMessages: ((updater: (prev: MessageItem[]) => MessageItem[]) => void) | undefined;
-let announceError: ((text: string) => void) | undefined;
+let announce: ((type: MessageType, text: string) => void) | undefined;
 
 const ICONS: Record<MessageType, () => JSX.Element> = {
   success: () => <SuccessIcon />,
@@ -51,17 +54,28 @@ const ICONS: Record<MessageType, () => JSX.Element> = {
 
 function MessageContainer() {
   const [messages, setMessageList] = createSignal<MessageItem[]>([]);
-  const [errorText, setErrorText] = createSignal("");
+  const [statusTexts, setStatusTexts] = createSignal<{ text: string }[]>([]);
+  const [alertTexts, setAlertTexts] = createSignal<{ text: string }[]>([]);
   setMessages = setMessageList;
-  // Emptied first, so the same error twice in a row is still a change to announce.
-  announceError = text => {
-    setErrorText("");
-    setTimeout(() => setErrorText(`Error: ${text}`), 50);
+  // The list itself isn't live, so each message is spoken once, by one of the regions below, and
+  // stays readable in the list for as long as it shows. Each announcement is a new node, so the
+  // same text twice in a row is still announced; it leaves once read, so browsing meets the
+  // message once, in the list.
+  announce = (type, text) => {
+    const setTexts = type === "error" ? setAlertTexts : setStatusTexts;
+    const entry = { text: type === "error" ? `Error: ${text}` : text };
+    // A moment later, so a region rendered just now is in place before it changes.
+    setTimeout(() => setTexts(prev => [...prev, entry]), 50);
+    setTimeout(() => setTexts(prev => prev.filter(e => e !== entry)), 50 + ANNOUNCEMENT_MS);
   };
 
   return (
     <>
-      <div class="bx-Message" role="status" aria-live="polite" aria-label="Notifications">
+      <div
+        class="bx-Message"
+        role={messages().length > 0 ? "region" : undefined}
+        aria-label={messages().length > 0 ? "Notifications" : undefined}
+      >
         <For each={messages()}>
           {item => (
             <div
@@ -77,19 +91,19 @@ function MessageContainer() {
                 if (!event.currentTarget.contains(next)) item.hold("focus", false);
               }}
             >
-              {/* An error is read out by the alert region instead, so it isn't heard twice. */}
-              <span
-                class="bx-Message-content"
-                aria-hidden={item.type === "error" ? "true" : undefined}
-              >
+              <span class="bx-Message-content">
                 <span class="bx-Message-icon">{item.icon ?? ICONS[item.type]()}</span>
-                <span class="bx-Message-text">{item.text}</span>
+                <span id={`bx-message-${item.id}`} class="bx-Message-text">
+                  {item.text}
+                </span>
               </span>
               <Show when={item.closable}>
                 <button
                   type="button"
                   class="bx-Message-close"
                   aria-label="Close notification"
+                  // Says which one it closes when several show.
+                  aria-describedby={`bx-message-${item.id}`}
                   onClick={item.close}
                 >
                   <CloseIcon />
@@ -99,9 +113,12 @@ function MessageContainer() {
           )}
         </For>
       </div>
-      {/* Errors interrupt, as an alert should; the polite region above waits its turn. */}
+      <div class="bx-visually-hidden" role="status" aria-label="Notifications">
+        <For each={statusTexts()}>{entry => <p>{entry.text}</p>}</For>
+      </div>
+      {/* Errors interrupt, as an alert should; the polite region waits its turn. */}
       <div class="bx-visually-hidden" role="alert">
-        {errorText()}
+        <For each={alertTexts()}>{entry => <p>{entry.text}</p>}</For>
       </div>
     </>
   );
@@ -226,7 +243,7 @@ function display(queued: QueuedMessage) {
       { id, type, text, icon, closable, exiting, hold, close: dismiss }
     ]);
     queued.close = dismiss;
-    if (type === "error") announceError!(text);
+    announce!(type, text);
     if (!persistent) {
       startedAt = performance.now();
       dismissTimer = setTimeout(dismiss, remaining);

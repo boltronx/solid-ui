@@ -66,6 +66,22 @@ describe("Autocomplete", () => {
     expect(data().get("city")).toBe("");
   });
 
+  it("doesn't pick with a click once it becomes read-only while suggestions show", async () => {
+    const [locked, setLocked] = createSignal(false);
+    const onOptionSubmit = vi.fn();
+    const { data } = renderInForm(() => (
+      <ReadOnlyProvider readOnly={locked()}>
+        <Autocomplete label="City" name="city" options={cities} onOptionSubmit={onOptionSubmit} />
+      </ReadOnlyProvider>
+    ));
+    await userEvent.type(screen.getByLabelText("City"), "ce");
+    const cebu = await screen.findByRole("option", { name: "Cebu" });
+    setLocked(true);
+    await userEvent.click(cebu);
+    expect(onOptionSubmit).not.toHaveBeenCalled();
+    expect(data().get("city")).toBe("ce");
+  });
+
   it("stays closed when nothing matches, unless given a nothing-found message", async () => {
     const { unmount } = renderInForm(() => <Autocomplete label="City" options={cities} />);
     const input = screen.getByLabelText("City");

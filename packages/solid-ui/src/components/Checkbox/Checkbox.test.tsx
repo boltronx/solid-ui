@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { renderInForm } from "../../../test/helpers";
 import { focusFirstInvalid } from "../../utils/form";
+import { Switch } from "../Switch/Switch";
 
 import { Checkbox } from "./Checkbox";
 
@@ -116,6 +117,31 @@ describe("Checkbox row clicks", () => {
     expect(box).not.toBeChecked();
     await userEvent.click(screen.getByText(/You agree/));
     expect(box).toBeChecked();
+  });
+
+  it("toggles from its description inside a focusable container, e.g. a Modal's dialog", async () => {
+    render(() => (
+      <section tabindex="-1">
+        <Checkbox label="Accept" description="Required to continue" />
+        <Switch label="Alerts" description="Sent by email" />
+      </section>
+    ));
+    await userEvent.click(screen.getByText("Required to continue"));
+    expect(screen.getByRole("checkbox", { name: "Accept" })).toBeChecked();
+    await userEvent.click(screen.getByText("Sent by email"));
+    expect(screen.getByRole("switch", { name: "Alerts" })).toBeChecked();
+  });
+
+  it("leaves a click to an enclosing label, so it toggles once", async () => {
+    render(() => (
+      <label>
+        <div tabindex="-1">
+          <Checkbox aria-label="Accept" description="Required to continue" />
+        </div>
+      </label>
+    ));
+    await userEvent.click(screen.getByText("Required to continue"));
+    expect(screen.getByRole("checkbox", { name: "Accept" })).toBeChecked();
   });
 });
 
