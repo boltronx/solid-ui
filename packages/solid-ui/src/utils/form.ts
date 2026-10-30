@@ -87,11 +87,16 @@ export function isCompositionKey(event: KeyboardEvent): boolean {
  * button is submitted directly.
  */
 export function submitImplicitly(form: HTMLFormElement) {
-  const defaultButton = Array.from(form.elements).find(
-    (element): element is HTMLButtonElement | HTMLInputElement =>
-      (element instanceof HTMLButtonElement && element.type === "submit") ||
-      (element instanceof HTMLInputElement &&
-        (element.type === "submit" || element.type === "image"))
+  const defaultButton = Array.from(
+    (form.getRootNode() as ParentNode).querySelectorAll<HTMLButtonElement | HTMLInputElement>(
+      "button, input"
+    )
+  ).find(
+    element =>
+      element.form === form &&
+      ((element instanceof HTMLButtonElement && element.type === "submit") ||
+        (element instanceof HTMLInputElement &&
+          (element.type === "submit" || element.type === "image")))
   );
   if (!defaultButton) form.requestSubmit();
   else if (!defaultButton.disabled) defaultButton.click();
