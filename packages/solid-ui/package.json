@@ -1,6 +1,6 @@
 {
   "name": "@boltronx/solid-ui",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Simple, themeable SolidJS components that work with plain HTML forms.",
   "license": "MIT",
   "author": "Gabriel Jefferson Boltron <gabrielboltron@gmail.com>",
@@ -33,6 +33,22 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "worker": {
+        "solid": "./dist/server.jsx",
+        "default": "./dist/server.js"
+      },
+      "browser": {
+        "solid": "./dist/index.jsx",
+        "default": "./dist/index.js"
+      },
+      "deno": {
+        "solid": "./dist/server.jsx",
+        "default": "./dist/server.js"
+      },
+      "node": {
+        "solid": "./dist/server.jsx",
+        "default": "./dist/server.js"
+      },
       "solid": "./dist/index.jsx",
       "default": "./dist/index.js"
     },

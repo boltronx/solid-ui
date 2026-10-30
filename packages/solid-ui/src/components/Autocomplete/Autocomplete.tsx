@@ -17,6 +17,7 @@ import { ComboboxOptionContent, ComboboxState, minLengthHint } from "../Combobox
 import { FloatingPanel } from "../FloatingPanel/FloatingPanel";
 import { Input, type InputProps } from "../Input/Input";
 import { Loader } from "../Loader/Loader";
+import { useReadOnly } from "../ReadOnly/ReadOnly";
 import { ScrollArea } from "../ScrollArea/ScrollArea";
 import type { SelectOption } from "../Select/Select";
 
@@ -40,7 +41,15 @@ export interface AutocompleteProps extends Omit<
   value?: string;
   /** Uncontrolled starting text; a form reset restores it. */
   defaultValue?: string;
+  /**
+   * A search is running: the field shows a spinner, and the dropdown keeps the previous
+   * suggestions until new ones arrive, so the list doesn't flicker as the user types.
+   */
   loading?: boolean;
+  /**
+   * Shown when no suggestion matches. Without it the dropdown just stays closed: any text is
+   * valid here, so having no suggestion isn't something to report.
+   */
   nothingFoundMessage?: string;
   renderOption?: (option: SelectOption) => JSX.Element;
   /** Replaces the chevron at the end of the field. */
@@ -50,8 +59,9 @@ export interface AutocompleteProps extends Omit<
   onOptionSubmit?: (option: SelectOption) => void;
   /**
    * Set to search on the server: options are then shown as given, without local filtering. Called
-   * once typing pauses (see `onSearchChangeDebounceMs`), and right away when a suggestion is picked.
-   * The signal aborts when a newer search starts, so pass it to fetch to drop stale responses.
+   * once typing pauses (see `onSearchChangeDebounceMs`). Picking a suggestion doesn't search: its
+   * text came from the results already shown; use `onOptionSubmit` to load more about it. The
+   * signal aborts when a newer search starts, so pass it to fetch to drop stale responses.
    */
   onSearchChange?: (value: string, signal: AbortSignal) => void;
   /** How long typing must pause before `onSearchChange` is called, in ms. Default 300; 0 calls on every keystroke. */
@@ -85,6 +95,7 @@ export function Autocomplete(props: AutocompleteProps) {
   const generatedId = createUniqueId();
   const inputId = () => props.id ?? `bx-autocomplete-${generatedId}`;
   const listboxId = () => `${inputId()}-listbox`;
+  const isReadOnly = useReadOnly(() => props.readOnly === true);
   const [open, setOpen] = createSignal(false);
   const [activeIndex, setActiveIndex] = createSignal(-1);
   const text = createControllableSignal<string>({
@@ -101,10 +112,15 @@ export function Autocomplete(props: AutocompleteProps) {
     minLength: () => props.onSearchChangeMinLength
   });
   // Too short to search the server: the dropdown asks for more instead of showing stale options.
-  const hint = () =>
+  const hint = createMemo(() =>
     props.onSearchChange && serverSearch.tooShort(text.value())
       ? minLengthHint(props.onSearchChangeMinLength, props.searchMinLengthMessage)
-      : undefined;
+      : undefined
+  );
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`disabled={a() && b()}`) there would make Solid create a computation
+  // that is never disposed.
+  const disabled = createMemo(() => props.disabled === true);
 
   const visibleOptions = createMemo(() => {
     const search = text.value().trim().toLocaleLowerCase();
@@ -115,16 +131,25 @@ export function Autocomplete(props: AutocompleteProps) {
   });
 
   const firstEnabledIndex = () => visibleOptions().findIndex(option => !option.disabled);
+  // Open only with something to show: suggestions, the min-length hint, or a nothing-found
+  // message the app asked for (not while a search that may still find something is running).
+  const showNothingFound = createMemo(
+    () => visibleOptions().length === 0 && props.nothingFoundMessage !== undefined && !props.loading
+  );
+  const panelOpen = createMemo(
+    () => open() && (visibleOptions().length > 0 || !!hint() || showNothingFound())
+  );
 
+  // Nothing is highlighted until the arrow keys move there: the field takes free text, so Enter
+  // must keep what was typed rather than swap in the first suggestion.
   createEffect(() => {
     visibleOptions();
-    if (open()) setActiveIndex(firstEnabledIndex());
+    setActiveIndex(-1);
   });
 
   const openDropdown = () => {
-    if (props.disabled || props.readOnly) return;
+    if (disabled() || isReadOnly()) return;
     setOpen(true);
-    setActiveIndex(firstEnabledIndex());
   };
 
   const closeDropdown = () => {
@@ -132,17 +157,16 @@ export function Autocomplete(props: AutocompleteProps) {
     setActiveIndex(-1);
   };
 
-  /** Typing waits for a pause before searching; a picked suggestion searches right away. */
-  const setText = (value: string, searchNow = false) => {
+  const setText = (value: string) => {
     text.setValue(value);
     props.onChange?.(value);
-    if (searchNow) serverSearch.now(value);
-    else serverSearch.schedule(value);
   };
 
   const submitOption = (option: SelectOption) => {
-    if (option.disabled) return;
-    setText(option.label, true);
+    if (option.disabled || disabled() || isReadOnly()) return;
+    setText(option.label);
+    // No search for a picked suggestion, and none for the text typed before it either.
+    serverSearch.drop();
     props.onOptionSubmit?.(option);
     closeDropdown();
     inputRef?.focus();
@@ -157,7 +181,8 @@ export function Autocomplete(props: AutocompleteProps) {
   const moveActive = (direction: 1 | -1) => {
     const options = visibleOptions();
     if (!options.some(option => !option.disabled)) return;
-    let next = activeIndex();
+    // From nothing highlighted, ArrowDown lands on the first option and ArrowUp on the last.
+    let next = activeIndex() < 0 && direction === -1 ? 0 : activeIndex();
     do {
       next = (next + direction + options.length) % options.length;
     } while (options[next]?.disabled);
@@ -167,12 +192,12 @@ export function Autocomplete(props: AutocompleteProps) {
 
   const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = event => {
     if (typeof props.onKeyDown === "function") props.onKeyDown(event);
-    if (event.defaultPrevented || props.disabled || props.readOnly) return;
+    if (event.defaultPrevented || disabled() || isReadOnly()) return;
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      if (!open()) openDropdown();
-      else moveActive(event.key === "ArrowDown" ? 1 : -1);
+      openDropdown();
+      moveActive(event.key === "ArrowDown" ? 1 : -1);
       return;
     }
     if (event.key === "Home" && open()) {
@@ -196,7 +221,8 @@ export function Autocomplete(props: AutocompleteProps) {
       return;
     }
     if (event.key === "Escape" && open()) {
-      event.preventDefault();
+      // Claimed only when it closed something visible, so a modal behind still gets it otherwise.
+      if (panelOpen()) event.preventDefault();
       closeDropdown();
     }
     if (event.key === "Tab") closeDropdown();
@@ -225,9 +251,9 @@ export function Autocomplete(props: AutocompleteProps) {
         autocomplete="off"
         aria-autocomplete="list"
         aria-controls={listboxId()}
-        aria-expanded={open()}
+        aria-expanded={panelOpen()}
         aria-activedescendant={
-          open() && !props.loading && !hint() && activeIndex() >= 0
+          panelOpen() && !hint() && activeIndex() >= 0
             ? `${listboxId()}-${activeIndex()}`
             : undefined
         }
@@ -237,6 +263,7 @@ export function Autocomplete(props: AutocompleteProps) {
         }}
         onInput={event => {
           setText(event.currentTarget.value);
+          serverSearch.schedule(event.currentTarget.value);
           openDropdown();
         }}
         onFocus={event => {
@@ -245,15 +272,25 @@ export function Autocomplete(props: AutocompleteProps) {
         }}
         onKeyDown={handleKeyDown}
         rightSection={
-          <span class="bx-Autocomplete-indicator" data-expanded={open() ? "" : undefined}>
+          // Hidden: the spinner only appears, which screen readers don't reliably announce, so
+          // the live region below says it instead.
+          <span
+            class="bx-Autocomplete-indicator"
+            data-expanded={open() ? "" : undefined}
+            aria-hidden="true"
+          >
             <Show when={!props.loading} fallback={<Loader size="xs" />}>
               {props.chevronIcon ?? <ChevronDownIcon />}
             </Show>
           </span>
         }
       />
+      {/* Always on the page, so changing its text is announced. */}
+      <span class="bx-visually-hidden" role="status">
+        {props.loading ? "Loading suggestions…" : ""}
+      </span>
       <FloatingPanel
-        open={open()}
+        open={panelOpen()}
         target={() => inputRef}
         matchTargetWidth
         ref={element => (dropdownRef = element)}
@@ -263,8 +300,7 @@ export function Autocomplete(props: AutocompleteProps) {
         {/* The same scrolling list as Select: at most 18rem tall, and it keeps its own scroll. */}
         <ScrollArea class="bx-Combobox-scroll" viewportClass="bx-Combobox-viewport" scrollbars="y">
           <ComboboxState
-            loading={props.loading}
-            empty={visibleOptions().length === 0}
+            empty={showNothingFound()}
             nothingFoundMessage={props.nothingFoundMessage}
             hint={hint()}
           />
@@ -274,7 +310,7 @@ export function Autocomplete(props: AutocompleteProps) {
             role="listbox"
             aria-label={typeof props.label === "string" ? props.label : props["aria-label"]}
           >
-            <Show when={!props.loading && !hint()}>
+            <Show when={!hint()}>
               <For each={visibleOptions()}>
                 {(option, index) => (
                   <div

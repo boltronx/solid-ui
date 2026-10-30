@@ -1,5 +1,11 @@
 import type { JSX, ValidComponent } from "solid-js";
-import { children as resolveChildren, createEffect, createSignal, Show } from "solid-js";
+import {
+  children as resolveChildren,
+  createEffect,
+  createMemo,
+  createSignal,
+  Show
+} from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { ChevronRightIcon } from "../../icons";
@@ -33,7 +39,11 @@ export function Navlink(props: NavlinkProps) {
     const c = resolved();
     return Array.isArray(c) ? c.length > 0 : !!c;
   };
-  const isDiv = () => !props.href && (!props.component || props.component === "div");
+  // What the handlers read, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const isDiv = createMemo(() => !props.href && (!props.component || props.component === "div"));
+  const disabled = createMemo(() => props.disabled === true);
+  const controlled = createMemo(() => props.opened !== undefined);
   const [opened, setOpened] = createSignal(false);
 
   createEffect(() => {
@@ -41,13 +51,17 @@ export function Navlink(props: NavlinkProps) {
   });
 
   const activate = (event: MouseEvent) => {
-    if (props.disabled) return;
-    if (hasChildren() && props.opened === undefined) setOpened(o => !o);
+    if (disabled()) {
+      // aria-disabled doesn't stop a link, so the navigation is cancelled here.
+      event.preventDefault();
+      return;
+    }
+    if (hasChildren() && !controlled()) setOpened(o => !o);
     props.onClick?.(event);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if ((event.key === "Enter" || event.key === " ") && isDiv() && !props.disabled) {
+    if ((event.key === "Enter" || event.key === " ") && isDiv() && !disabled()) {
       event.preventDefault();
       (event.currentTarget as HTMLElement).click();
     }

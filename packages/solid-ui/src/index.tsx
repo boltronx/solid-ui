@@ -13,7 +13,7 @@ export type { ButtonProps, ButtonVariant } from "./components/Button/Button";
 export { Button } from "./components/Button/Button";
 export type { CardProps } from "./components/Card/Card";
 export { Card } from "./components/Card/Card";
-export type { CheckboxProps } from "./components/Checkbox/Checkbox";
+export type { CheckboxBaseProps, CheckboxProps } from "./components/Checkbox/Checkbox";
 export { Checkbox } from "./components/Checkbox/Checkbox";
 export type { CodeProps } from "./components/Code/Code";
 export { Code } from "./components/Code/Code";
@@ -21,6 +21,13 @@ export type { DatePickerProps } from "./components/DatePicker/DatePicker";
 export { DatePicker } from "./components/DatePicker/DatePicker";
 export { parseISODate, toISODate } from "./components/DatePicker/dates";
 export type { FieldOwnProps } from "./components/Field/Field";
+export type {
+  FlexBreakpoint,
+  FlexDirection,
+  FlexProps,
+  ResponsiveDirection
+} from "./components/Flex/Flex";
+export { Flex } from "./components/Flex/Flex";
 export type {
   FloatingPanelProps,
   FloatingPosition
@@ -49,7 +56,12 @@ export type { LoaderProps } from "./components/Loader/Loader";
 export { Loader } from "./components/Loader/Loader";
 export type { MenuItemProps, MenuPosition, MenuProps } from "./components/Menu/Menu";
 export { Menu, MenuDivider, MenuDropdown, MenuItem, MenuTarget } from "./components/Menu/Menu";
-export type { MessageConfig, MessageOptions, MessageType } from "./components/Message/Message";
+export type {
+  CloseMessage,
+  MessageConfig,
+  MessageOptions,
+  MessageType
+} from "./components/Message/Message";
 export { message } from "./components/Message/Message";
 export type {
   ModalContext,
@@ -57,7 +69,7 @@ export type {
   ModalOptions,
   ModalPosition
 } from "./components/Modal/Modal";
-export { Modal, modal } from "./components/Modal/Modal";
+export { Modal, modal, ModalHost } from "./components/Modal/Modal";
 export type { NavlinkProps } from "./components/Navlink/Navlink";
 export { Navlink } from "./components/Navlink/Navlink";
 export type { PaginationProps } from "./components/Pagination/Pagination";
@@ -77,6 +89,8 @@ export type { SplitButtonProps } from "./components/SplitButton/SplitButton";
 export { SplitButton } from "./components/SplitButton/SplitButton";
 export type { StackProps } from "./components/Stack/Stack";
 export { Stack } from "./components/Stack/Stack";
+export type { SwitchProps } from "./components/Switch/Switch";
+export { Switch } from "./components/Switch/Switch";
 export type { TableColumn, TablePagination, TableProps } from "./components/Table/Table";
 export { paginationSummary, Table } from "./components/Table/Table";
 export type { TextColor, TextProps } from "./components/Text/Text";

@@ -10,6 +10,7 @@ You need Node.js 24.22.1 (see `.nvmrc`) and pnpm 12 (pinned via `devEngines.pack
 ```sh
 pnpm install
 pnpm dev        # builds the library in watch mode and serves the docs at http://localhost:5173
+pnpm dev:start  # the same, with the SolidStart fixture (SSR and server actions) at http://localhost:3000
 ```
 
 ## Project layout
@@ -21,6 +22,7 @@ packages/solid-ui/          the published library
   scripts/build-css.mjs     combines the CSS files into dist/styles.css and dist/components.css
 apps/docs/                  the documentation site (GitHub Pages)
   src/demos/<section>/      each demo is a file; the docs show its source next to it
+apps/start-fixture/         a SolidStart app; `pnpm test:start` builds it and checks the server output
 ```
 
 ## Conventions

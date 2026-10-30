@@ -40,6 +40,7 @@ import {
   Skeleton,
   SplitButton,
   Stack,
+  Switch,
   Table,
   Text,
   Textarea,
@@ -146,7 +147,9 @@ describe("accessibility (axe)", () => {
     expectAccessible(() => (
       <>
         <Checkbox label="Remember me" description="For 30 days" />
-        <Checkbox label="Notifications" role="switch" defaultChecked />
+        <Switch label="Notifications" defaultChecked />
+        <Switch label="With labels" size="lg" onLabel="ON" offLabel="OFF" />
+        <Checkbox label="Some picked" indeterminate labelPosition="left" />
         <Checkbox label="Disabled" disabled />
       </>
     )));
@@ -247,6 +250,14 @@ describe("accessibility (axe)", () => {
             { id: "A-2", total: "$30" }
           ]}
           onRowClick={() => {}}
+        />
+        <Table
+          aria-label="Orders with row actions"
+          stackBelow={0}
+          columns={[{ header: "Order", render: row => row.id }]}
+          data={[{ id: "B-1" }, { id: "B-2" }]}
+          onRowClick={() => {}}
+          rowLabel={row => `Open order ${row.id}`}
         />
         <Table<{ id: string }>
           aria-label="Empty"

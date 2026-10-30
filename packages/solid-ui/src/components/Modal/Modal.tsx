@@ -12,7 +12,7 @@ import {
   splitProps,
   useContext
 } from "solid-js";
-import { render } from "solid-js/web";
+import { Portal, render } from "solid-js/web";
 
 import { CloseIcon } from "../../icons";
 import { cx, type StyleProp } from "../../utils/style";
@@ -55,6 +55,8 @@ interface ModalItem extends ModalContext<unknown> {
   id: number;
   renderContent: (ctx: ModalContext<unknown>) => JSX.Element;
   requestDismiss: (reason: Exclude<ModalDismissReason, "closeAll">) => void;
+  /** Ends the modal at once, without onBeforeClose: its host is going away. */
+  destroy: () => void;
   exiting: Accessor<boolean>;
   options: ResolvedModalOptions<unknown>;
 }
@@ -126,7 +128,16 @@ function ModalContainer() {
   createEffect(() => {
     document.documentElement.classList.toggle("bx-scroll-locked", modals().length > 0);
   });
-  onCleanup(() => document.documentElement.classList.remove("bx-scroll-locked"));
+  onCleanup(() => {
+    document.documentElement.classList.remove("bx-scroll-locked");
+    // An unmounted ModalHost hands over to a fresh container on the next open.
+    if (setModals === setModalList) {
+      getModals = undefined;
+      setModals = undefined;
+    }
+    // Its modals go with it, so their promises settle and their key listeners come off.
+    for (const item of modals()) item.destroy();
+  });
 
   return (
     <div class="bx-Modal" role="presentation">
@@ -208,7 +219,9 @@ function ModalHeader(
                 aria-label="Close"
                 disabled={props.locked?.()}
                 onClick={() =>
-                  (props.close as ((reason: "close") => Promise<void>) | undefined)?.("close")
+                  (props.close as ((reason: "close") => Promise<void>) | undefined)?.(
+                    "close"
+                  ).catch(reportCloseError)
                 }
               >
                 {props.closeIcon ?? <CloseIcon />}
@@ -242,6 +255,19 @@ function ModalFooter(props: ModalSectionProps) {
   );
 }
 
+/**
+ * Where modals render. Optional: without it, the first `modal.open` renders them in a root of
+ * their own, which can't see the app's context. Put it inside your providers (a router,
+ * ReadOnlyProvider, a theme) so modal content can use them, e.g. `useNavigate`.
+ */
+export function ModalHost() {
+  return (
+    <Portal>
+      <ModalContainer />
+    </Portal>
+  );
+}
+
 function ensureContainer() {
   if (setModals) return;
   const host = document.createElement("div");
@@ -267,14 +293,23 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
       const [exiting, setExiting] = createSignal(false);
       const [locked, setLocked] = createSignal(false);
       let closed = false;
+      // Set while onBeforeClose decides, so a second dismissal doesn't ask it again.
+      let deciding = false;
 
       const isTopModal = () => getModals?.().at(-1)?.id === id;
 
       const close = async (value?: T | ModalDismissReason | undefined) => {
-        if (closed) return;
+        if (closed || deciding) return;
         if (resolvedOptions.onBeforeClose) {
-          const proceed = await resolvedOptions.onBeforeClose(value);
-          if (!proceed) return;
+          deciding = true;
+          try {
+            // A rejection keeps the modal open and reaches the caller of close().
+            if (!(await resolvedOptions.onBeforeClose(value))) return;
+          } finally {
+            deciding = false;
+          }
+          // Destroyed with its host while onBeforeClose was deciding.
+          if (closed) return;
         }
         closed = true;
         window.removeEventListener("keydown", onKeyDown);
@@ -297,7 +332,15 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
         if (closed || locked() || !isTopModal()) return;
         if (reason === "escape" && !resolvedOptions.closeOnEscape) return;
         if (reason === "backdrop" && !resolvedOptions.closeOnBackdrop) return;
-        void close(reason);
+        close(reason).catch(reportCloseError);
+      };
+
+      const destroy = () => {
+        if (closed) return;
+        closed = true;
+        window.removeEventListener("keydown", onKeyDown);
+        resolve("closeAll");
+        dispose();
       };
 
       const onKeyDown = (event: KeyboardEvent) => {
@@ -315,6 +358,7 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
           renderContent: options.content,
           close,
           requestDismiss,
+          destroy,
           lock: (value: boolean) => setLocked(value),
           locked,
           exiting,
@@ -325,8 +369,20 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
   });
 }
 
+/**
+ * A dismissal (Escape, backdrop, the header close button, closeAll) has no caller to hand an onBeforeClose error to, so it
+ * is reported like an uncaught error, and the modal stays open.
+ */
+function reportCloseError(error: unknown) {
+  if (typeof globalThis.reportError === "function") globalThis.reportError(error);
+  else
+    queueMicrotask(() => {
+      throw error;
+    });
+}
+
 function closeAll() {
-  for (const item of getModals?.() ?? []) void item.close("closeAll");
+  for (const item of getModals?.() ?? []) item.close("closeAll").catch(reportCloseError);
 }
 
 export const modal = {

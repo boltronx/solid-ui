@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createSignal, splitProps } from "solid-js";
+import { createMemo, createSignal, splitProps } from "solid-js";
 
 import { createDebouncedCall } from "../../utils/debounce";
 import { createControllableSignal, onFormReset } from "../../utils/form";
@@ -94,18 +94,26 @@ export function formatNumber(value: number | null | undefined, decimals?: Decima
   return formatter.format(stripFloatNoise(value));
 }
 
-/** Parses a typed or formatted number ("1,234.5"); empty or invalid text is null. */
+/**
+ * Parses a typed or formatted number ("1,234.5"); empty or invalid text is null. Commas must group
+ * thousands: "1,5" (a decimal comma) is invalid rather than read as 15.
+ */
 export function parseNumber(text: string): number | null {
-  const cleaned = text.replace(/,/g, "").trim();
+  const trimmed = text.trim();
+  if (trimmed.includes(",") && !/^-?\d{1,3}(,\d{3})+(\.\d*)?$/.test(trimmed)) return null;
+  const cleaned = trimmed.replace(/,/g, "");
   if (cleaned === "" || cleaned === "-") return null;
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
 function isWithinSafePrecision(text: string, maxDecimals: number): boolean {
-  const cleaned = text.replace(/,/g, "").trim();
+  const trimmed = text.trim();
+  // Commas only between digits of the whole part, where grouping goes; one may end the text
+  // while typing. So "1.234,56" (a decimal comma) is refused as it is typed or pasted.
+  if (!/^-?(\d+(,\d+)*,?)?(\.\d*)?$/.test(trimmed)) return false;
+  const cleaned = trimmed.replace(/,/g, "");
   if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return true;
-  if (!/^-?\d*(\.\d*)?$/.test(cleaned)) return false;
   const fraction = cleaned.split(".")[1];
   if (fraction && fraction.length > maxDecimals) return false;
   const digits = cleaned.replace(/[-.]/g, "").replace(/^0+/, "");
@@ -154,18 +162,38 @@ export function InputNumber(props: InputNumberProps) {
     "inputClass"
   ]);
 
-  const decimalConfig = () =>
-    resolveDecimals(local.decimals, local.currency ? { min: 2, max: 3 } : undefined);
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`max={a() ? b : c}`) there would make Solid create a computation that
+  // is never disposed.
+  const decimalConfig = createMemo(() =>
+    resolveDecimals(local.decimals, local.currency ? { min: 2, max: 3 } : undefined)
+  );
+  const limits = createMemo(() => ({ min: resolveLimit(local.min), max: resolveLimit(local.max) }));
+  const reportsInput = createMemo(() => local.onInput !== undefined);
   const maxDecimals = () => decimalConfig().max;
   const clamp = (n: number | null) => {
     if (n === null) return null;
-    const min = resolveLimit(local.min);
-    const max = resolveLimit(local.max);
+    const { min, max } = limits();
     if (min !== undefined && n < min) return min;
     if (max !== undefined && n > max) return max;
     return n;
   };
-  const round = (n: number | null) => (n === null ? null : roundNumber(n, maxDecimals()));
+  /**
+   * Clamped and rounded. Rounding can step past a limit with more decimals than the field keeps
+   * (max 1.005 with 2 decimals would round to 1.01), so a limit is rounded toward the inside.
+   */
+  const round = (n: number | null) => {
+    if (n === null) return null;
+    const decimals = maxDecimals();
+    const rounded = roundNumber(clamp(n)!, decimals);
+    const factor = 10 ** decimals;
+    const { min, max } = limits();
+    if (max !== undefined && rounded > max)
+      return Math.floor(stripFloatNoise(max * factor)) / factor;
+    if (min !== undefined && rounded < min)
+      return Math.ceil(stripFloatNoise(min * factor)) / factor;
+    return rounded;
+  };
 
   const state = createControllableSignal<number | null>({
     value: () => (local.value === undefined ? undefined : clamp(local.value)),
@@ -179,11 +207,20 @@ export function InputNumber(props: InputNumberProps) {
     () => local.onInput,
     () => local.onInputDebounceMs ?? 400
   );
-  onFormReset(() => input, state.reset);
+  onFormReset(
+    () => input,
+    () => {
+      state.reset();
+      const value = round(state.value());
+      setRawText(value === null ? "" : String(value));
+    }
+  );
 
-  const displayValue = () => (focused() ? rawText() : formatNumber(state.value(), decimalConfig()));
+  const displayValue = () =>
+    focused() ? rawText() : formatNumber(round(state.value()), decimalConfig());
+  // While focused, the typed text: Enter submits the form before the blur that commits it.
   const submittedValue = () => {
-    const value = round(state.value());
+    const value = round(focused() ? parseNumber(rawText()) : state.value());
     return value === null ? "" : String(value);
   };
 
@@ -201,7 +238,7 @@ export function InputNumber(props: InputNumberProps) {
 
   const handleBlur: JSX.FocusEventHandler<HTMLInputElement, FocusEvent> = event => {
     if (focused()) {
-      const value = round(clamp(parseNumber(rawText())));
+      const value = round(parseNumber(rawText()));
       state.setValue(value);
       setFocused(false);
       debouncedInput.now(value);
@@ -217,7 +254,7 @@ export function InputNumber(props: InputNumberProps) {
       return;
     }
     setRawText(text);
-    if (local.onInput) debouncedInput.schedule(clamp(parseNumber(text)));
+    if (reportsInput()) debouncedInput.schedule(clamp(parseNumber(text)));
   };
 
   return (
@@ -247,6 +284,8 @@ export function InputNumber(props: InputNumberProps) {
       <input
         type="hidden"
         name={local.name}
+        // This is the input that submits, so it joins a form named by `form` like the field does.
+        form={inputProps.form}
         value={submittedValue()}
         disabled={inputProps.disabled}
       />

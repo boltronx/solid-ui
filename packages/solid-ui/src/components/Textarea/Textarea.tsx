@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js";
 import {
   createEffect,
+  createMemo,
   createSignal,
   createUniqueId,
   onCleanup,
@@ -8,7 +9,13 @@ import {
   untrack
 } from "solid-js";
 
-import { afterFormReset, keepControlledOnReset, onFormReset } from "../../utils/form";
+import {
+  afterFormReset,
+  isCompositionKey,
+  keepControlledOnReset,
+  onFormReset,
+  submitImplicitly
+} from "../../utils/form";
 import type { BaseProps } from "../../utils/style";
 import { describedBy, Field, type FieldOwnProps } from "../Field/Field";
 import { useReadOnly } from "../ReadOnly/ReadOnly";
@@ -71,20 +78,29 @@ export function Textarea(props: TextareaProps) {
     if (left > Math.max(10, max / 10)) return "";
     return `${left} ${left === 1 ? "character" : "characters"} left`;
   };
+  // Read once: the text is only the starting point, so later changes to it (or every keystroke
+  // of a controlled value) would rewrite the DOM and move what a reset restores.
+  const initialText = untrack(() => local.value ?? local.defaultValue);
   let textarea: HTMLTextAreaElement | undefined;
+  // What the native listeners and the resize observer read, as memos: they have no reactive owner,
+  // and reading a prop written as a condition (`maxRows={a() ? 4 : 8}`) there would make Solid
+  // create a computation that is never disposed.
+  const autoSize = createMemo(() => local.autoSize === true);
+  const maxRows = createMemo(() => local.maxRows);
+  const submitOnEnter = createMemo(() => local.submitOnEnter === true);
 
   /** Sizes the box to its content, borders included since the box is border-box. */
   function fit() {
     const el = textarea;
-    if (!el || !local.autoSize) return;
+    if (!el || !autoSize()) return;
     el.style.height = "auto";
     let height = el.scrollHeight + el.offsetHeight - el.clientHeight;
     let overflow = false;
-    if (local.maxRows) {
+    if (maxRows()) {
       // With height auto the box is exactly `rows` tall, so borrowing maxRows measures the cap in
       // the box's own font and padding.
       const rows = el.rows;
-      el.rows = local.maxRows;
+      el.rows = maxRows()!;
       const max = el.offsetHeight;
       el.rows = rows;
       overflow = height > max;
@@ -126,17 +142,16 @@ export function Textarea(props: TextareaProps) {
         {...rest}
         ref={el => {
           textarea = el;
-          if (local.defaultValue !== undefined) el.defaultValue = local.defaultValue;
           el.addEventListener("input", () => {
             setCharacterCount(el.value.length);
             fit();
           });
           el.addEventListener("keydown", event => {
-            // isComposing: Enter that confirms an IME composition is not a submit.
-            if (!local.submitOnEnter || event.key !== "Enter" || event.shiftKey) return;
-            if (event.isComposing) return;
+            // Enter that confirms an IME composition is not a submit.
+            if (!submitOnEnter() || event.key !== "Enter" || event.shiftKey) return;
+            if (isCompositionKey(event)) return;
             event.preventDefault();
-            el.form?.requestSubmit();
+            if (el.form) submitImplicitly(el.form);
           });
           if (local.autoSize) {
             // Wrapping follows the width, which is unknown until the box is laid out and can change
@@ -156,13 +171,20 @@ export function Textarea(props: TextareaProps) {
         id={textareaId()}
         class="bx-Input-control bx-Textarea"
         value={local.value ?? undefined}
-        readOnly={isReadOnly()}
+        // Omitted rather than false: the server writes any readonly attribute, even "false".
+        readOnly={isReadOnly() || undefined}
         data-readonly={isReadOnly() ? "" : undefined}
         aria-invalid={field.error ? true : undefined}
         aria-describedby={describedBy(textareaId(), field)}
         rows={rest.rows ?? (local.autoSize ? 1 : undefined)}
         style={{ resize: local.resize ?? "none" }}
-      />
+      >
+        {/*
+          A textarea's text is its default: it fills an untouched box, is what a reset restores,
+          and, unlike a ref, is in the server's HTML.
+        */}
+        {initialText}
+      </textarea>
       {local.showCount ? (
         <>
           {/* Read out only near the limit, not as "12 slash 200" on every keystroke. */}

@@ -16,6 +16,11 @@ import { defineConfig } from "vite";
 
 export default defineConfig({ plugins: [solid(), colorScheme()] });`;
 
+const setupModalHost = `import { ModalHost } from "@boltronx/solid-ui";
+
+// In your root layout, inside your providers (router, theme, ...)
+<ModalHost />`;
+
 const firstForm = `import { Button, Input, Stack } from "@boltronx/solid-ui";
 
 export function Login() {
@@ -67,7 +72,15 @@ export function GettingStarted() {
         <Code block>{setupVite}</Code>
       </Section>
 
-      <Section title="3. Build a form">
+      <Section title="3. Let modals see your app">
+        <Text>
+          Optional. Modals render at the end of <Code>&lt;body&gt;</Code>; with a host inside your
+          providers, modal content can use them, such as the router's <Code>useNavigate</Code>.
+        </Text>
+        <Code block>{setupModalHost}</Code>
+      </Section>
+
+      <Section title="4. Build a form">
         <Text>
           Inputs submit through <Code>FormData</Code>, so there is no form state to manage.{" "}
           <Anchor component={A} href="/forms">

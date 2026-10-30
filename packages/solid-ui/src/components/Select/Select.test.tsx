@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { screen } from "@solidjs/testing-library";
+import { screen, waitFor } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -35,6 +35,17 @@ describe("Select", () => {
     expect(data().get("fruit")).toBe("banana");
     expect(onChange).toHaveBeenCalledWith("banana", fruits[1]);
     expect(screen.getByRole("combobox")).toHaveTextContent("Banana");
+  });
+
+  it("keeps its dropdown between openings rather than rebuilding it", async () => {
+    renderInForm(() => <Select label="Fruit" name="fruit" options={fruits} />);
+    const combobox = screen.getByRole("combobox");
+    await userEvent.click(combobox);
+    const option = await screen.findByRole("option", { name: "Apple" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(option).not.toBeInTheDocument());
+    await userEvent.click(combobox);
+    expect(await screen.findByRole("option", { name: "Apple" })).toBe(option);
   });
 
   it("ignores disabled options", async () => {
@@ -134,5 +145,76 @@ describe("Select", () => {
     screen.getByRole("combobox").focus();
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(data().get("fruit")).toBe("banana");
+  });
+});
+
+describe("Select keyboard and focus", () => {
+  it("leaves Enter and Space on a chip's remove button to that button", async () => {
+    const { data } = renderInForm(() => (
+      <Select
+        label="Fruits"
+        name="fruits"
+        options={fruits}
+        multiple
+        defaultValue={["apple", "banana"]}
+      />
+    ));
+    screen.getByRole("button", { name: "Remove Apple" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(data().getAll("fruits")).toEqual(["banana"]);
+    screen.getByRole("button", { name: "Remove Banana" }).focus();
+    await userEvent.keyboard(" ");
+    expect(data().getAll("fruits")).toEqual([]);
+    expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("moves Tab on from the field, not off the page, when the search has focus", async () => {
+    renderInForm(() => (
+      <>
+        <Select label="Fruit" options={fruits} searchable />
+        <button type="button">Next</button>
+      </>
+    ));
+    const combobox = screen.getByRole("combobox", { name: "Fruit" });
+    combobox.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.getByRole("searchbox")).toHaveFocus());
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Next" })).toHaveFocus();
+    expect(combobox).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("puts focus back on the field after picking from the search", async () => {
+    renderInForm(() => <Select label="Fruit" options={fruits} searchable />);
+    const combobox = screen.getByRole("combobox", { name: "Fruit" });
+    combobox.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.getByRole("searchbox")).toHaveFocus());
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(combobox).toHaveTextContent("Banana");
+    expect(combobox).toHaveFocus();
+  });
+
+  it("passes over disabled options with the arrow keys", async () => {
+    const options = [
+      { value: "apple", label: "Apple", disabled: true },
+      { value: "banana", label: "Banana" },
+      { value: "cherry", label: "Cherry", disabled: true },
+      { value: "date", label: "Date" }
+    ];
+    renderInForm(() => <Select label="Fruit" options={options} />);
+    const combobox = screen.getByRole("combobox", { name: "Fruit" });
+    const active = () =>
+      document.getElementById(combobox.getAttribute("aria-activedescendant") ?? "")?.textContent;
+    combobox.focus();
+    await userEvent.keyboard("{Enter}");
+    // Opens on the first option that can be picked.
+    expect(active()).toBe("Banana");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(active()).toBe("Date");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(active()).toBe("Banana");
+    await userEvent.keyboard("{ArrowUp}");
+    expect(active()).toBe("Date");
   });
 });

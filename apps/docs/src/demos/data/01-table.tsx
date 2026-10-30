@@ -1,7 +1,7 @@
 export const meta = {
   title: "Table",
   description:
-    "Fixed columns stay put while the table scrolls sideways. Narrow the window: below 576px of table width, rows become cards."
+    "Fixed columns stay put while the table scrolls sideways. Click a row to open it; the actions menu keeps its own clicks. rowLabel names the row's action, so keyboard and screen reader users reach an 'Open order' button in each row (or put a link of your own in a cell). Narrow the window: below 576px of table width, rows become cards."
 };
 
 import {
@@ -84,7 +84,8 @@ const columns: TableColumn<Order>[] = [
   { header: "Date", render: order => order.date, minWidth: "7rem" },
   { header: "Total", render: order => peso.format(order.total), align: "right", minWidth: "8rem" },
   {
-    header: "",
+    // Named for screen readers; an empty header leaves the column unlabeled.
+    header: <span class="bx-visually-hidden">Actions</span>,
     width: "3rem",
     fixed: "right",
     stacked: "corner",
@@ -107,5 +108,14 @@ const columns: TableColumn<Order>[] = [
 ];
 
 export default function Demo() {
-  return <Table aria-label="Orders" columns={columns} data={orders} minWidth="48rem" />;
+  return (
+    <Table
+      aria-label="Orders"
+      columns={columns}
+      data={orders}
+      minWidth="48rem"
+      onRowClick={order => message.info(`Opened ${order.id}`)}
+      rowLabel={order => `Open order ${order.id}`}
+    />
+  );
 }

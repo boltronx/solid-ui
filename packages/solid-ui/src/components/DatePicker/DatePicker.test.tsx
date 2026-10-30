@@ -51,6 +51,16 @@ describe("DatePicker", () => {
     expect(screen.getByLabelText("Due date")).toHaveValue("Oct 20, 2026");
   });
 
+  it("opens from a click on its label, and closes from a click on the field", async () => {
+    renderInForm(() => <DatePicker label="Due date" />);
+    const field = screen.getByRole("combobox", { name: "Due date" });
+    await userEvent.click(screen.getByText("Due date"));
+    expect(field).toHaveAttribute("aria-expanded", "true");
+    expect(field).toHaveFocus();
+    await userEvent.click(field);
+    expect(field).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("navigates with the keyboard", async () => {
     const { data } = renderInForm(() => (
       <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />
@@ -83,9 +93,18 @@ describe("DatePicker", () => {
     expect(screen.getByRole("button", { name: "Wednesday, October 21, 2026" })).toBeDisabled();
   });
 
+  it("clears with Backspace only when clearable", async () => {
+    const { data } = renderInForm(() => (
+      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />
+    ));
+    screen.getByLabelText("Due date").focus();
+    await userEvent.keyboard("{Backspace}");
+    expect(data().get("due")).toBe("2026-10-05");
+  });
+
   it("restores defaultValue on form reset and clears with Backspace", async () => {
     const { data, reset } = renderInForm(() => (
-      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" />
+      <DatePicker label="Due date" name="due" defaultValue="2026-10-05" clearable />
     ));
     screen.getByLabelText("Due date").focus();
     await userEvent.keyboard("{Backspace}");
@@ -104,5 +123,33 @@ describe("DatePicker", () => {
     renderInForm(() => <DatePicker label="Due date" />);
     await userEvent.type(screen.getByLabelText("Due date"), "hello");
     expect(screen.getByLabelText("Due date")).toHaveValue("");
+  });
+});
+
+describe("DatePicker opening", () => {
+  it("opens on today when its value isn't a real date", async () => {
+    renderInForm(() => <DatePicker label="Due date" value="2026-02-30" />);
+    await openCalendar();
+    const today = new Date();
+    const name = new Intl.DateTimeFormat("en-US", { dateStyle: "full" }).format(today);
+    expect(await screen.findByRole("button", { name })).toHaveAttribute("data-today");
+  });
+
+  it("marks today as of the opening, not as of the first render", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 9, 5, 23, 59));
+      renderInForm(() => <DatePicker label="Due date" />);
+      vi.setSystemTime(new Date(2026, 9, 6, 0, 1));
+      await openCalendar();
+      expect(
+        await screen.findByRole("button", { name: "Tuesday, October 6, 2026" })
+      ).toHaveAttribute("data-today");
+      expect(screen.getByRole("button", { name: "Monday, October 5, 2026" })).not.toHaveAttribute(
+        "data-today"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

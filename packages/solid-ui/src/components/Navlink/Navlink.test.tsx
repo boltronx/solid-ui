@@ -69,4 +69,14 @@ describe("Navlink", () => {
     await userEvent.click(item);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("doesn't navigate while disabled", async () => {
+    let navigated: boolean | undefined;
+    const listener = (event: Event) => (navigated = !event.defaultPrevented);
+    render(() => <Navlink href="/x" label="Reports" disabled />);
+    window.addEventListener("click", listener);
+    await userEvent.click(screen.getByText("Reports"));
+    window.removeEventListener("click", listener);
+    expect(navigated).toBe(false);
+  });
 });

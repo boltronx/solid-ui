@@ -9,6 +9,12 @@
     align-items: flex-start;
   }
 
+  /* Label first; justify-content keeps the pair at the start of the line. */
+  &[data-label-position="left"] {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+  }
+
   &[data-readonly] {
     cursor: default;
 
@@ -85,27 +91,17 @@
     }
   }
 
-  &[role="switch"] {
-    width: 2.25rem;
-    height: 1.125rem;
-    border-radius: 1rem;
+  /* A dash in place of the check mark. */
+  &:indeterminate {
+    background: var(--bx-primary);
+    border-color: var(--bx-primary);
 
-    /* The knob */
     &::before {
-      left: 0.125rem;
-      width: 0.8125rem;
-      height: 0.8125rem;
-      background: var(--bx-text-dimmed);
-      border: 0;
-      border-radius: 50%;
+      width: 0.625rem;
+      height: 0;
+      border-right: 0;
       opacity: 1;
-      transform: translateY(-50%);
-      transition: left var(--bx-duration) ease;
-    }
-
-    &:checked::before {
-      left: 1.1875rem;
-      background: var(--bx-primary-contrast);
+      transform: translate(-50%, -50%);
     }
   }
 }
@@ -125,4 +121,18 @@
   margin: 0;
   font-size: var(--bx-font-size-xs);
   color: var(--bx-text-dimmed);
+}
+
+.bx-Checkbox-error {
+  margin: 0;
+  font-size: var(--bx-font-size-xs);
+  color: var(--bx-danger);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.bx-Checkbox-input[aria-invalid="true"] {
+  border-color: var(--bx-danger);
 }

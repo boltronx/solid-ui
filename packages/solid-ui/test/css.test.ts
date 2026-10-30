@@ -67,7 +67,12 @@ describe("component CSS", () => {
   it.each(files)("%s references only defined tokens", file => {
     const css = readFileSync(file, "utf8");
     // Set from component code as inline styles
-    const inline = new Set(["--bx-grid-min", "--bx-modal-offset"]);
+    const inline = new Set([
+      "--bx-grid-min",
+      "--bx-modal-offset",
+      "--bx-flex-direction",
+      ...["sm", "md", "lg", "xl"].map(breakpoint => `--bx-flex-direction-${breakpoint}`)
+    ]);
     for (const [, name] of css.matchAll(/var\((--bx-[\w-]+)/g)) {
       const known = definedTokens.has(name) || componentVariables.has(name) || inline.has(name!);
       expect(known, `${name} is not defined`).toBe(true);
@@ -110,5 +115,17 @@ describe("layers", () => {
         .map(value => `${file}: z-index ${value}`)
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("forced colors", () => {
+  it("draws focus with an outline, which forced-colors modes keep, where box-shadow is dropped", () => {
+    const css = buildCss({ includeGlobal: false });
+    const block = /@media\s*\(forced-colors:\s*active\)\s*\{(.*?\}\s*)\}/s.exec(css)?.[1] ?? "";
+    expect(block).toMatch(/:focus-visible/);
+    expect(block).toMatch(/\.bx-Switch-input:focus-visible\s*\+\s*\.bx-Switch-track/);
+    expect(block).toMatch(/\.bx-Combobox-option\[data-active\]/);
+    expect(block).toMatch(/\.bx-DatePicker-cell\[data-active\]/);
+    expect(block).toMatch(/outline:\s*2px solid highlight\s*!important/i);
   });
 });

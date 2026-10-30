@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
     # Waits a week after a release before proposing it, so a compromised version is usually
-    # caught first. Matches pnpm's minimumReleaseAge.
+    # caught first. Longer than pnpm's minimumReleaseAge (3 days), which guards installs.
     cooldown:
       default-days: 7
     groups:

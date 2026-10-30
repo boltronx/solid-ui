@@ -1,4 +1,4 @@
-import { type JSX, splitProps } from "solid-js";
+import { createMemo, type JSX, splitProps } from "solid-js";
 
 import { type BaseProps, cx } from "../../utils/style";
 import { Loader } from "../Loader/Loader";
@@ -36,9 +36,26 @@ export function Button(props: ButtonProps) {
     "autoFocus",
     "disabled",
     "type",
-    "ref"
+    "ref",
+    "onClick"
   ]);
   const variant = () => local.variant ?? "default";
+  // Read by the click handler, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const loading = createMemo(() => local.loading === true);
+
+  // A loading button stays enabled, so it keeps focus (a disabled one would drop a keyboard user
+  // to <body>); its clicks, and the form submits they would start, are blocked here instead.
+  const handleClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = event => {
+    if (loading()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    const handler = local.onClick;
+    if (typeof handler === "function") handler(event);
+    else handler?.[0](handler[1], event);
+  };
 
   return (
     <button
@@ -56,8 +73,10 @@ export function Button(props: ButtonProps) {
       data-full-width={local.fullWidth ? "" : undefined}
       data-with-left={local.loading || local.leftSection ? "" : undefined}
       data-with-right={local.rightSection ? "" : undefined}
-      disabled={local.disabled || local.loading}
+      disabled={local.disabled}
+      aria-disabled={local.loading && !local.disabled ? true : undefined}
       aria-busy={local.loading || undefined}
+      onClick={handleClick}
     >
       {local.loading ? (
         <span class="bx-Button-section">

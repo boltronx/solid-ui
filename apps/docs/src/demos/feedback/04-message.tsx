@@ -1,7 +1,7 @@
 export const meta = {
   title: "message",
   description:
-    "Short notifications, announced to screen readers. Hovering one pauses its timer. Up to three show at once and the rest wait their turn; change that with message.config({ limit })."
+    "Short notifications, announced to screen readers (errors right away). Hovering one pauses its timer. Up to three show at once and the rest wait their turn; change that with message.config({ limit })."
 };
 
 import { Button, Group, message } from "@boltronx/solid-ui";

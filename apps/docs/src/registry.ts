@@ -76,12 +76,12 @@ export const componentSections: Section[] = [
   {
     slug: "checkbox",
     title: "Checkbox & Switch",
-    description: "On/off choices that submit like a native checkbox."
+    description: "Checkbox for choices, Switch for settings that apply right away."
   },
   {
     slug: "layout",
     title: "Layout",
-    description: "Group, Stack, SimpleGrid and Card."
+    description: "Group, Stack, Flex, SimpleGrid and Card."
   },
   {
     slug: "typography",

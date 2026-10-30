@@ -112,3 +112,41 @@
     animation-duration: 150ms !important;
   }
 }
+
+.bx-Message-content {
+  display: flex;
+  align-items: center;
+  gap: var(--bx-spacing-sm);
+  min-width: 0;
+}
+
+.bx-Message-close {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: -0.25rem;
+  padding: 0;
+  color: var(--bx-text-dimmed);
+  background: transparent;
+  border: 0;
+  border-radius: var(--bx-radius-sm);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--bx-text);
+    background: var(--bx-surface-hover);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--bx-focus-ring);
+  }
+
+  > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}

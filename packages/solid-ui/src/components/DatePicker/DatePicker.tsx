@@ -104,6 +104,8 @@ export function DatePicker(props: DatePickerProps) {
   // The day the arrow keys move and Enter picks while the calendar is open; at the year and
   // decade levels only its month or year matters.
   const [active, setActive] = createSignal(toISODate(new Date()));
+  // Read again on each opening, so a page left open past midnight marks the right day.
+  const [today, setToday] = createSignal(toISODate(new Date()));
   let inputRef: HTMLInputElement | undefined;
   let fieldRef: HTMLDivElement | undefined;
   let panelRef: HTMLDivElement | undefined;
@@ -133,15 +135,23 @@ export function DatePicker(props: DatePickerProps) {
     );
   });
 
-  const inactive = () => props.disabled || isReadOnly();
+  // What the event handlers read, as memos: a handler has no reactive owner, and reading a prop
+  // written as a condition (`min={a() ? b : c}`) there would make Solid create a computation that
+  // is never disposed.
+  const inactive = createMemo(() => props.disabled === true || isReadOnly());
+  const range = createMemo(() => ({
+    min: props.min,
+    max: props.max,
+    excludeDate: props.excludeDate
+  }));
   createEffect(() => {
     if (inactive()) setOpen(false);
   });
 
-  const outOfRange = (iso: string) =>
-    (!!props.min && iso < props.min) ||
-    (!!props.max && iso > props.max) ||
-    !!props.excludeDate?.(iso);
+  const outOfRange = (iso: string) => {
+    const { min, max, excludeDate } = range();
+    return (!!min && iso < min) || (!!max && iso > max) || !!excludeDate?.(iso);
+  };
   /** Whether no day of the month of `iso` can be picked. */
   const monthOutOfRange = (iso: string) =>
     (!!props.min && iso.slice(0, 7) < props.min.slice(0, 7)) ||
@@ -169,7 +179,9 @@ export function DatePicker(props: DatePickerProps) {
 
   const openCalendar = () => {
     if (inactive() || open()) return;
-    setActive(value() || toISODate(new Date()));
+    setToday(toISODate(new Date()));
+    // A value that isn't a real date (e.g. "2026-02-30") opens on today instead.
+    setActive(parseISODate(value()) ? value() : today());
     setLevel("month");
     setOpen(true);
   };
@@ -205,7 +217,8 @@ export function DatePicker(props: DatePickerProps) {
     if (inactive()) return;
     if (event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
-      if (!props.required) commit("");
+      // The same rule as the clear button, as Select does: only a clearable field clears.
+      if (canClear()) commit("");
       return;
     }
     if (!open()) {
@@ -261,7 +274,6 @@ export function DatePicker(props: DatePickerProps) {
   const years = createMemo(() => decadeYears(active()));
   const activeMonth = () => active().slice(0, 7);
   const activeYear = () => Number(active().slice(0, 4));
-  const today = toISODate(new Date());
 
   const headerLabel = () => {
     if (level() === "month") return format(active(), formats().monthYear);
@@ -288,7 +300,7 @@ export function DatePicker(props: DatePickerProps) {
     const text = format(value());
     return props.prefix && text ? `${props.prefix} ${text}` : text;
   };
-  const canClear = () => props.clearable === true && !!value() && !inactive();
+  const canClear = createMemo(() => props.clearable === true && !!value() && !inactive());
 
   return (
     <div
@@ -296,7 +308,13 @@ export function DatePicker(props: DatePickerProps) {
       class={cx("bx-DatePicker", local.class)}
       style={local.style}
       data-inactive={inactive() ? "" : undefined}
-      onClick={() => (open() ? setOpen(false) : openCalendar())}
+      onClick={event => {
+        // A click on the label is followed by the click it forwards to the input; toggling on
+        // both would open the calendar and close it again.
+        if ((event.target as Element).closest("label")) return;
+        if (open()) setOpen(false);
+        else openCalendar();
+      }}
     >
       <Input
         id={field.id}
@@ -409,7 +427,7 @@ export function DatePicker(props: DatePickerProps) {
                       aria-pressed={day === value()}
                       data-active={day === active() ? "" : undefined}
                       data-outside={day.slice(0, 7) !== activeMonth() ? "" : undefined}
-                      data-today={day === today ? "" : undefined}
+                      data-today={day === today() ? "" : undefined}
                       disabled={outOfRange(day)}
                       onClick={() => pick(day)}
                     >

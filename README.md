@@ -87,6 +87,16 @@ export function Login() {
 }
 ```
 
+## Server-side rendering
+
+The components render on the server with their values filled in, and hydrate without mismatches.
+Every build is checked against a SolidStart app, including a form that posts to a server action
+with JavaScript off; other SSR setups work the same way. The package ships a server build for the `node`, `deno` and
+`worker` conditions, so it works from `node_modules` without compiling it yourself; Solid-aware
+bundlers can also compile the JSX build. Dropdowns, tooltips, `modal` and `message` only render
+in the browser. `useColorScheme()` renders the default mode on the server and switches to the
+saved one after hydration; `colorSchemeScript()` in `<head>` keeps the page from flashing.
+
 ## Forms
 
 Each input works as uncontrolled or controlled:
@@ -99,6 +109,35 @@ Each input works as uncontrolled or controlled:
 Composite inputs submit like native ones. `Select` adds one entry per picked value
 (`formData.getAll("tags")`), and `InputNumber` submits the plain number (`1234.5`) even while it
 shows `1,234.50`.
+
+While a form sends, give its submit button `loading`, e.g. from `useSubmission` with a Solid Router
+or SolidStart action:
+
+```tsx
+import { action, useSubmission } from "@solidjs/router";
+import { Button, Input } from "@boltronx/solid-ui";
+
+const subscribe = action(async (formData: FormData) => {
+  "use server";
+  // save formData.get("email")
+}, "subscribe");
+
+export function SubscribeForm() {
+  const submission = useSubmission(subscribe);
+  return (
+    <form action={subscribe} method="post">
+      <Input label="Email" name="email" type="email" required />
+      <Button type="submit" variant="primary" loading={submission.pending}>
+        Subscribe
+      </Button>
+    </form>
+  );
+}
+```
+
+Without an action, set a signal in `onSubmit` and pass it to `loading` the same way. The form then
+can't be sent twice: clicks, Enter and Space on the button do nothing, and neither does Enter in a
+field. The button keeps keyboard focus (it is `aria-disabled`, not `disabled`) and its size.
 
 ## Theming
 

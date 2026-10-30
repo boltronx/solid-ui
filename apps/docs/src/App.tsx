@@ -8,6 +8,7 @@ import {
   MenuDropdown,
   MenuItem,
   MenuTarget,
+  ModalHost,
   Navlink,
   ScrollArea,
   Stack,
@@ -152,6 +153,8 @@ function Shell(props: RouteSectionProps) {
         </ScrollArea>
       </aside>
       <main class="docs-main">{props.children}</main>
+      {/* Inside the router, so modal content can navigate. */}
+      <ModalHost />
     </div>
   );
 }

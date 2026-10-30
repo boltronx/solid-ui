@@ -78,9 +78,13 @@ export function IconButton(props: IconButtonProps) {
       data-color={local.color ?? "default"}
       data-bordered={local.bordered ? "" : undefined}
       aria-label={others["aria-label"] ?? local.tooltip}
-      // The tooltip already names the button; it only describes it when aria-label names it.
+      // The tooltip already names the button; it only describes it when aria-label names it, and
+      // then joins any description the caller gave.
       aria-describedby={
-        local.tooltip && others["aria-label"] ? tooltipId : others["aria-describedby"]
+        cx(
+          others["aria-describedby"],
+          local.tooltip && others["aria-label"] ? tooltipId : undefined
+        ) || undefined
       }
     >
       {local.children}

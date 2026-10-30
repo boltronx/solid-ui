@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import { createMemo, type JSX } from "solid-js";
 
 import { ChevronDownIcon } from "../../icons";
 import { type BaseProps, cx } from "../../utils/style";
@@ -24,13 +24,15 @@ export interface SplitButtonProps extends BaseProps {
 }
 
 export function SplitButton(props: SplitButtonProps) {
+  // Read by the click handler, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const blocked = createMemo(() => props.disabled === true || props.loading === true);
+
+  // The menu opens from its own half only: Menu toggles on clicks on its trigger, the arrow half,
+  // and treats a click here like any other outside it, closing an open menu.
   const handlePrimaryClick = (event: MouseEvent) => {
-    // The menu opens from its own half only.
-    event.stopPropagation();
-    if (props.disabled || props.loading) return;
+    if (blocked()) return;
     props.onClick?.(event);
-    const menuRoot = (event.currentTarget as HTMLElement).closest<HTMLElement>(".bx-Menu");
-    if (menuRoot?.hasAttribute("data-open")) menuRoot.click();
   };
 
   return (

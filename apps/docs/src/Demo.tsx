@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, onCleanup, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { Button, Card, Code, Group, Stack, Text, Title } from "@boltronx/solid-ui";
@@ -8,12 +8,23 @@ import type { Demo as DemoData } from "./registry";
 
 export function Demo(props: { demo: DemoData }) {
   const [showCode, setShowCode] = createSignal(false);
-  const [copied, setCopied] = createSignal(false);
+  const [copyState, setCopyState] = createSignal<"idle" | "copied" | "failed">("idle");
+
+  let resetTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(resetTimer));
 
   const copy = async () => {
-    await navigator.clipboard.writeText(props.demo.source);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(props.demo.source);
+      setCopyState("copied");
+    } catch {
+      // Clipboard access can be denied (permissions, an insecure origin); say so rather than
+      // leaving the button looking like it worked.
+      setCopyState("failed");
+    }
+    // Restarted by each copy, so a second click keeps its "Copied" for the full time.
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => setCopyState("idle"), 1500);
   };
 
   return (
@@ -32,8 +43,12 @@ export function Demo(props: { demo: DemoData }) {
         </div>
         <Group justify="flex-end" gap="xs" class="docs-demo-toolbar">
           <Show when={showCode()}>
-            <Button variant="subtle" onClick={copy} leftSection={copied() ? <IconCheck /> : null}>
-              {copied() ? "Copied" : "Copy"}
+            <Button
+              variant="subtle"
+              onClick={copy}
+              leftSection={copyState() === "copied" ? <IconCheck /> : null}
+            >
+              {{ idle: "Copy", copied: "Copied", failed: "Copy failed" }[copyState()]}
             </Button>
           </Show>
           <Button

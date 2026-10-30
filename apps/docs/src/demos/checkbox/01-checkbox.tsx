@@ -1,4 +1,4 @@
-export const meta = { title: "Checkbox and Switch" };
+export const meta = { title: "Checkbox" };
 
 import { Checkbox, Stack } from "@boltronx/solid-ui";
 
@@ -7,7 +7,6 @@ export default function Demo() {
     <Stack gap="md">
       <Checkbox label="I agree to the terms" />
       <Checkbox label="Email me about updates" description="At most once a month." defaultChecked />
-      <Checkbox label="Notifications" role="switch" defaultChecked />
       <Checkbox label="Disabled" disabled />
     </Stack>
   );

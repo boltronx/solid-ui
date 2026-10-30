@@ -15,6 +15,7 @@
     "contentinfo",
     "enterkeyhint",
     "inlines",
+    "innerhtml",
     "kebab",
     "lightningcss",
     "listbox",
@@ -28,11 +29,12 @@
     "scrollbars",
     "Segoe",
     "solidjs",
-    "tabler",
     "tabindex",
+    "tabler",
     "textareas",
     "unhover",
     "unlayered",
+    "unstub",
     "zizmor",
     "zizmorcore"
   ]

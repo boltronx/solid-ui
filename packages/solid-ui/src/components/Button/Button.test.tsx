@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { render, screen } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
@@ -42,10 +43,43 @@ describe("Button", () => {
       </Button>
     ));
     const button = screen.getByRole("button", { name: /save/i });
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveAttribute("aria-busy", "true");
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus when it starts loading, and doesn't submit meanwhile", async () => {
+    const [loading, setLoading] = createSignal(false);
+    const onClick = vi.fn(() => setLoading(true));
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    render(() => (
+      <form onSubmit={onSubmit}>
+        <input aria-label="Name" />
+        <Button type="submit" loading={loading()} onClick={onClick}>
+          Save
+        </Button>
+      </form>
+    ));
+    const button = screen.getByRole("button", { name: /save/i });
+    button.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledOnce();
+    // Still focused, unlike a disabled button, so the keyboard user stays in place.
+    expect(button).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await userEvent.type(screen.getByLabelText("Name"), "x{Enter}");
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("calls a bound click handler", async () => {
+    const onClick = vi.fn();
+    render(() => <Button onClick={[onClick, "row-3"]}>Delete</Button>);
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(onClick).toHaveBeenCalledWith("row-3", expect.any(MouseEvent));
   });
 
   it("passes native attributes through", () => {

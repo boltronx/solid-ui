@@ -2,6 +2,7 @@ import type { Accessor, JSX } from "solid-js";
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   createUniqueId,
   onCleanup,
@@ -24,6 +25,8 @@ interface MenuContextValue {
   menuId: string;
   menuRef: Accessor<HTMLDivElement | undefined>;
   setDropdownRef: (element: HTMLDivElement | undefined) => void;
+  /** The dropdown is shown: focus moves into it, as a menu button does. */
+  onDropdownOpen: () => void;
   trigger: Accessor<HTMLElement | undefined>;
   setTrigger: (element: HTMLElement | undefined) => void;
   openMenu: (focus: InitialFocus) => void;
@@ -74,9 +77,13 @@ function MenuRoot(props: MenuProps) {
     else setOpen(true);
   };
 
+  /** The element whose clicks toggle the menu: the menu button, once MenuTarget has found it. */
+  const toggle = () => trigger() ?? menuRef;
+
+  // Anything else closes it, including other content beside the target, e.g. SplitButton's main half.
   const closeOnOutsideClick = (event: MouseEvent) => {
     const target = event.target as Node;
-    if (menuRef?.contains(target) || dropdownRef?.contains(target)) return;
+    if (toggle()?.contains(target) || dropdownRef?.contains(target)) return;
     closeMenu();
   };
 
@@ -102,11 +109,8 @@ function MenuRoot(props: MenuProps) {
     position,
     menuId,
     menuRef: () => menuRef,
-    setDropdownRef: element => {
-      dropdownRef = element;
-      // The dropdown mounts once open: move focus into it, as a menu button does.
-      if (element) queueMicrotask(() => focusItem(initialFocus));
-    },
+    setDropdownRef: element => (dropdownRef = element),
+    onDropdownOpen: () => focusItem(initialFocus),
     trigger,
     setTrigger,
     openMenu,
@@ -121,7 +125,7 @@ function MenuRoot(props: MenuProps) {
         style={props.style}
         data-open={open() ? "" : undefined}
         onClick={event => {
-          event.stopPropagation();
+          if (!toggle()?.contains(event.target as Node)) return;
           if (open()) closeMenu();
           else openMenu("first");
         }}
@@ -141,7 +145,12 @@ export function MenuTarget(props: { children?: JSX.Element; class?: string; aria
   let targetRef: HTMLDivElement | undefined;
 
   onMount(() => {
-    const focusable = targetRef?.querySelector<HTMLElement>(FOCUSABLE) ?? undefined;
+    // A child already marked as the menu button (e.g. SplitButton's arrow half) wins over the
+    // first focusable one.
+    const focusable =
+      targetRef?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ??
+      targetRef?.querySelector<HTMLElement>(FOCUSABLE) ??
+      undefined;
     setStandalone(!focusable);
     menu?.setTrigger(focusable ?? targetRef);
   });
@@ -218,8 +227,8 @@ function ConnectedMenuDropdown(props: { children?: JSX.Element; class?: string }
       case "End":
         return focusAt(-1);
       case "Tab":
-        // The dropdown sits at the end of <body>, so Tab would leave the page order; go back.
-        event.preventDefault();
+        // The dropdown sits at the end of <body>. Focus goes back to the trigger first, so the
+        // browser's Tab moves on from there to the next element, not off the page.
         return menu.close(true);
     }
   };
@@ -231,6 +240,7 @@ function ConnectedMenuDropdown(props: { children?: JSX.Element; class?: string }
       position={menu.position()}
       exitDuration={160}
       ref={menu.setDropdownRef}
+      onOpen={menu.onDropdownOpen}
       class={cx("bx-Dropdown", "bx-Menu-dropdown", props.class)}
       onClick={event => event.stopPropagation()}
     >
@@ -268,14 +278,19 @@ export interface MenuItemProps extends BaseProps {
 
 export function MenuItem(props: MenuItemProps) {
   const menu = useContext(MenuContext);
+  // Read by the click handler, as a memo: event handlers have no reactive owner, and reading a prop written as a
+  // condition there would make Solid create a computation that is never disposed.
+  const disabled = createMemo(() => props.disabled === true);
   const activate = (event: MouseEvent) => {
-    if (props.disabled) {
+    if (disabled()) {
       event.preventDefault();
       event.stopPropagation();
       return;
     }
-    props.onClick?.(event);
+    // Closed first, so focus is back on the trigger when the action runs: a modal it opens then
+    // returns focus there, not to this item, which is gone by the time the modal closes.
     menu?.close(true);
+    props.onClick?.(event);
   };
 
   return (

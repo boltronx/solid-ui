@@ -138,8 +138,8 @@ describe("icon overrides", () => {
       ).toBeInTheDocument();
 
       vi.advanceTimersByTime(2000 + 320);
-      expect(screen.queryByText("Saved")).toBeNull();
-      expect(screen.queryByText("Heads up")).toBeNull();
+      expect(screen.queryByText("Saved", { selector: ".bx-Message-text" })).toBeNull();
+      expect(screen.queryByText("Heads up", { selector: ".bx-Message-text" })).toBeNull();
     } finally {
       vi.runAllTimers();
       vi.useRealTimers();

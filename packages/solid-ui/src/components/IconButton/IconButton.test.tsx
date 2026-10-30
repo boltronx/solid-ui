@@ -23,6 +23,26 @@ describe("IconButton", () => {
     expect(button).toHaveAccessibleDescription("Delete");
   });
 
+  it("keeps the caller's own description alongside the tooltip's", () => {
+    render(() => (
+      <>
+        <p id="hint">Can't be undone</p>
+        <IconButton tooltip="Delete" aria-label="Delete row 3" aria-describedby="hint">
+          ×
+        </IconButton>
+        <IconButton tooltip="Archive" aria-describedby="hint">
+          ×
+        </IconButton>
+      </>
+    ));
+    expect(screen.getByRole("button", { name: "Delete row 3" })).toHaveAccessibleDescription(
+      "Can't be undone Delete"
+    );
+    expect(screen.getByRole("button", { name: "Archive" })).toHaveAccessibleDescription(
+      "Can't be undone"
+    );
+  });
+
   it("defaults to type=button and passes clicks through", async () => {
     const onClick = vi.fn();
     render(() => (
