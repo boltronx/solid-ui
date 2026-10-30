@@ -219,7 +219,9 @@ function ModalHeader(
                 aria-label="Close"
                 disabled={props.locked?.()}
                 onClick={() =>
-                  (props.close as ((reason: "close") => Promise<void>) | undefined)?.("close")
+                  (props.close as ((reason: "close") => Promise<void>) | undefined)?.(
+                    "close"
+                  ).catch(reportCloseError)
                 }
               >
                 {props.closeIcon ?? <CloseIcon />}
@@ -368,7 +370,7 @@ function open<T = string>(options: ModalOptions<T>): Promise<T | ModalDismissRea
 }
 
 /**
- * A dismissal (Escape, backdrop, closeAll) has no caller to hand an onBeforeClose error to, so it
+ * A dismissal (Escape, backdrop, the header close button, closeAll) has no caller to hand an onBeforeClose error to, so it
  * is reported like an uncaught error, and the modal stays open.
  */
 function reportCloseError(error: unknown) {

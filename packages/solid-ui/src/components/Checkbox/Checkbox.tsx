@@ -51,6 +51,9 @@ interface CheckboxControlProps extends CheckboxBaseProps {
   renderControl?: (input: JSX.Element) => JSX.Element;
 }
 
+const ROW_CLICK_EXCLUDED =
+  'input, label, a[href], button, select, textarea, summary, [role="button"], [role="link"], [tabindex]';
+
 /**
  * The checkbox behind Checkbox and Switch. Both are an <input type="checkbox">, so they submit,
  * reset and validate alike; a switch adds role="switch" and draws its own track around the input.
@@ -142,8 +145,9 @@ export function CheckboxControl(props: CheckboxControlProps) {
       data-align-start={local.description ? "" : undefined}
       data-label-position={local.labelPosition === "left" ? "left" : undefined}
       onClick={event => {
-        // The whole row toggles, not just the box and its label.
-        if ((event.target as HTMLElement).closest("input, label")) return;
+        // The whole row toggles, not just the box and its label, except for a click that is a
+        // control's own, e.g. a link to the terms in the description.
+        if ((event.target as HTMLElement).closest(ROW_CLICK_EXCLUDED)) return;
         if (rest.disabled || isReadOnly()) return;
         input?.click();
       }}

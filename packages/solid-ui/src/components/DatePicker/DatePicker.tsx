@@ -104,6 +104,8 @@ export function DatePicker(props: DatePickerProps) {
   // The day the arrow keys move and Enter picks while the calendar is open; at the year and
   // decade levels only its month or year matters.
   const [active, setActive] = createSignal(toISODate(new Date()));
+  // Read again on each opening, so a page left open past midnight marks the right day.
+  const [today, setToday] = createSignal(toISODate(new Date()));
   let inputRef: HTMLInputElement | undefined;
   let fieldRef: HTMLDivElement | undefined;
   let panelRef: HTMLDivElement | undefined;
@@ -169,7 +171,9 @@ export function DatePicker(props: DatePickerProps) {
 
   const openCalendar = () => {
     if (inactive() || open()) return;
-    setActive(value() || toISODate(new Date()));
+    setToday(toISODate(new Date()));
+    // A value that isn't a real date (e.g. "2026-02-30") opens on today instead.
+    setActive(parseISODate(value()) ? value() : today());
     setLevel("month");
     setOpen(true);
   };
@@ -262,7 +266,6 @@ export function DatePicker(props: DatePickerProps) {
   const years = createMemo(() => decadeYears(active()));
   const activeMonth = () => active().slice(0, 7);
   const activeYear = () => Number(active().slice(0, 4));
-  const today = toISODate(new Date());
 
   const headerLabel = () => {
     if (level() === "month") return format(active(), formats().monthYear);
@@ -416,7 +419,7 @@ export function DatePicker(props: DatePickerProps) {
                       aria-pressed={day === value()}
                       data-active={day === active() ? "" : undefined}
                       data-outside={day.slice(0, 7) !== activeMonth() ? "" : undefined}
-                      data-today={day === today ? "" : undefined}
+                      data-today={day === today() ? "" : undefined}
                       disabled={outOfRange(day)}
                       onClick={() => pick(day)}
                     >

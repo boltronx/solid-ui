@@ -43,8 +43,8 @@ export function InputPassword(props: InputPasswordProps) {
           <button
             type="button"
             class="bx-Input-sectionButton"
+            // The label says the state; aria-pressed too would read "Hide password, pressed".
             aria-label={visible() ? "Hide password" : "Show password"}
-            aria-pressed={visible()}
             disabled={inputProps.disabled}
             onClick={() => setVisible(value => !value)}
           >

@@ -117,3 +117,15 @@ describe("layers", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("forced colors", () => {
+  it("draws focus with an outline, which forced-colors modes keep, where box-shadow is dropped", () => {
+    const css = buildCss({ includeGlobal: false });
+    const block = /@media\s*\(forced-colors:\s*active\)\s*\{(.*?\}\s*)\}/s.exec(css)?.[1] ?? "";
+    expect(block).toMatch(/:focus-visible/);
+    expect(block).toMatch(/\.bx-Switch-input:focus-visible\s*\+\s*\.bx-Switch-track/);
+    expect(block).toMatch(/\.bx-Combobox-option\[data-active\]/);
+    expect(block).toMatch(/\.bx-DatePicker-cell\[data-active\]/);
+    expect(block).toMatch(/outline:\s*2px solid highlight\s*!important/i);
+  });
+});

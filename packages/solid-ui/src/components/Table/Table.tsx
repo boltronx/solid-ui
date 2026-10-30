@@ -290,10 +290,10 @@ export function Table<T>(props: TableProps<T>) {
                             {props.rowLabel?.(row)}
                           </button>
                         </Show>
+                        {/* Read out too: stacked, the header row is hidden, so this is the
+                            only thing that says what the value is. */}
                         <Show when={stacked() && (column.stacked ?? "label") === "label"}>
-                          <span class="bx-Table-label" aria-hidden="true">
-                            {column.header}
-                          </span>
+                          <span class="bx-Table-label">{column.header}</span>
                         </Show>
                         <span class="bx-Table-value">{column.render(row, rowIndex())}</span>
                       </td>

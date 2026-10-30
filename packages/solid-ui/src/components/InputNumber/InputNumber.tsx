@@ -173,7 +173,23 @@ export function InputNumber(props: InputNumberProps) {
     if (max !== undefined && n > max) return max;
     return n;
   };
-  const round = (n: number | null) => (n === null ? null : roundNumber(n, maxDecimals()));
+  /**
+   * Clamped and rounded. Rounding can step past a limit with more decimals than the field keeps
+   * (max 1.005 with 2 decimals would round to 1.01), so a limit is rounded toward the inside.
+   */
+  const round = (n: number | null) => {
+    if (n === null) return null;
+    const decimals = maxDecimals();
+    const rounded = roundNumber(clamp(n)!, decimals);
+    const factor = 10 ** decimals;
+    const min = resolveLimit(local.min);
+    const max = resolveLimit(local.max);
+    if (max !== undefined && rounded > max)
+      return Math.floor(stripFloatNoise(max * factor)) / factor;
+    if (min !== undefined && rounded < min)
+      return Math.ceil(stripFloatNoise(min * factor)) / factor;
+    return rounded;
+  };
 
   const state = createControllableSignal<number | null>({
     value: () => (local.value === undefined ? undefined : clamp(local.value)),
@@ -189,10 +205,11 @@ export function InputNumber(props: InputNumberProps) {
   );
   onFormReset(() => input, state.reset);
 
-  const displayValue = () => (focused() ? rawText() : formatNumber(state.value(), decimalConfig()));
+  const displayValue = () =>
+    focused() ? rawText() : formatNumber(round(state.value()), decimalConfig());
   // While focused, the typed text: Enter submits the form before the blur that commits it.
   const submittedValue = () => {
-    const value = round(focused() ? clamp(parseNumber(rawText())) : state.value());
+    const value = round(focused() ? parseNumber(rawText()) : state.value());
     return value === null ? "" : String(value);
   };
 
@@ -210,7 +227,7 @@ export function InputNumber(props: InputNumberProps) {
 
   const handleBlur: JSX.FocusEventHandler<HTMLInputElement, FocusEvent> = event => {
     if (focused()) {
-      const value = round(clamp(parseNumber(rawText())));
+      const value = round(parseNumber(rawText()));
       state.setValue(value);
       setFocused(false);
       debouncedInput.now(value);

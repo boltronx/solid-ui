@@ -45,3 +45,13 @@ if (typeof Element !== "undefined") {
     } as DOMRect;
   };
 }
+
+// Browsers don't focus an element inside `visibility: hidden`; jsdom does. Matching the browser
+// catches focus moved into a dropdown before it is shown.
+if (typeof HTMLElement !== "undefined") {
+  const focus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+    if (this.closest('[style*="visibility: hidden"]')) return;
+    focus.call(this, options);
+  };
+}

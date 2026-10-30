@@ -63,8 +63,13 @@ function isContainedValue(value: string): boolean {
   return depth === 0 && quote === undefined;
 }
 
+/** A property name, custom (`--brand`) or regular (`backgroundColor`, `background-color`). */
+const PROPERTY_NAME = /^(--[\w-]+|-?[A-Za-z][\w-]*)$/;
+
 function styleEntryToCss(key: string, value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
+  // A key such as `color: red; background` would add declarations of its own, like a value could.
+  if (!PROPERTY_NAME.test(key)) return null;
   const text = String(value);
   // Dropped, like any invalid value the browser would ignore.
   if (!isContainedValue(text)) return null;

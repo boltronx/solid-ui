@@ -209,3 +209,13 @@ describe("pagination helpers", () => {
     expect(paginationSummary({ ...base, page: 1, totalItems: 1 })).toBe("Showing 1 – 1 of 1 item");
   });
 });
+
+describe("Table stacked layout", () => {
+  it("reads each value with its column name, since the header row is hidden", () => {
+    render(() => <Table columns={columns} data={orders} stackBelow={576} />);
+    for (const label of screen.getAllByText("Customer", { selector: ".bx-Table-label" })) {
+      expect(label).not.toHaveAttribute("aria-hidden");
+    }
+    expect(screen.getByText("Ada").closest("td")).toHaveTextContent(/Customer.*Ada/);
+  });
+});

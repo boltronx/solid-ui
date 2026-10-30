@@ -15,14 +15,13 @@ describe("InputPassword", () => {
 
     await userEvent.type(input, "hunter2");
     const toggle = screen.getByRole("button", { name: "Show password" });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    // Its label says the state, so it isn't also a pressed toggle ("Hide password, pressed").
+    expect(toggle).not.toHaveAttribute("aria-pressed");
 
     await userEvent.click(toggle);
     expect(input).toHaveAttribute("type", "text");
-    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    expect(toggle).toHaveAccessibleName("Hide password");
+    expect(toggle).not.toHaveAttribute("aria-pressed");
     expect(data().get("password")).toBe("hunter2");
 
     await userEvent.click(screen.getByRole("button", { name: "Hide password" }));

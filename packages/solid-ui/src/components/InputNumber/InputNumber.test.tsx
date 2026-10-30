@@ -117,3 +117,22 @@ describe("InputNumber", () => {
     expect(data().get("qty")).toBe("5");
   });
 });
+
+describe("InputNumber limits", () => {
+  it("never rounds past max or min", async () => {
+    const onChange = vi.fn();
+    const { data } = renderInForm(() => (
+      <>
+        <InputNumber label="High" name="high" decimals={2} max={1.005} onChange={onChange} />
+        <InputNumber label="Low" name="low" decimals={2} min={-1.005} />
+      </>
+    ));
+    await userEvent.type(screen.getByLabelText("High"), "1.01");
+    await userEvent.type(screen.getByLabelText("Low"), "-1.01");
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledWith(1);
+    expect(data().get("high")).toBe("1");
+    expect(data().get("low")).toBe("-1");
+    expect(screen.getByLabelText("High")).toHaveValue("1.00");
+  });
+});

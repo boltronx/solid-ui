@@ -129,8 +129,12 @@ export function Select(props: SelectProps) {
 
   createEffect(() => {
     const loadedOptions = props.options;
+    // Only picked values need a remembered label, so a long server search doesn't pile up options.
+    const picked = new Set(selectedValues());
     setOptionCache(current => {
-      const merged = new Map(current.map(option => [option.value, option]));
+      const merged = new Map(
+        current.filter(option => picked.has(option.value)).map(option => [option.value, option])
+      );
       for (const option of loadedOptions) merged.set(option.value, option);
       return [...merged.values()];
     });
@@ -176,6 +180,8 @@ export function Select(props: SelectProps) {
       .join(", ");
   });
 
+  const firstEnabledIndex = () => visibleOptions().findIndex(option => !option.disabled);
+
   const scrollActiveIntoView = () => {
     const option = dropdownRef?.querySelectorAll<HTMLElement>("[role='option']")[activeIndex()];
     option?.scrollIntoView({ block: "nearest" });
@@ -195,7 +201,7 @@ export function Select(props: SelectProps) {
     const selectedIndex = visibleOptions().findIndex(option =>
       selectedValues().includes(option.value)
     );
-    setActiveIndex(Math.max(0, selectedIndex));
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : Math.max(0, firstEnabledIndex()));
   };
 
   const commit = (next: string[], option: SelectOption | undefined) => {
@@ -217,6 +223,8 @@ export function Select(props: SelectProps) {
     }
     if (!current.includes(option.value)) commit([option.value], option);
     close();
+    // The search that had focus is gone with the dropdown, so focus goes back to the field.
+    rootRef?.focus();
   };
 
   const removeValue = (value: string, event: MouseEvent) => {
@@ -244,6 +252,8 @@ export function Select(props: SelectProps) {
 
   const handleKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = event => {
     if (props.disabled || isReadOnly()) return;
+    // A chip's remove button keeps its own Enter and Space, which bubble up from inside the field.
+    if ((event.target as Element).closest(".bx-Select-chipRemove")) return;
     if (!open() && (event.key === "Backspace" || event.key === "Delete") && canClear()) {
       event.preventDefault();
       clearValue();
@@ -263,14 +273,22 @@ export function Select(props: SelectProps) {
     }
     if (event.key === "Tab") {
       close();
+      // The search sits in the dropdown at the end of <body>. Focus goes back to the field first,
+      // so the browser's Tab moves on from there to the next field, not off the page.
+      if (event.currentTarget !== rootRef) rootRef?.focus();
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const direction = event.key === "ArrowDown" ? 1 : -1;
-      const count = visibleOptions().length;
-      if (count === 0) return;
-      setActiveIndex(index => (index + direction + count) % count);
+      const options = visibleOptions();
+      // Disabled options can't be picked, so the keyboard passes over them.
+      if (!options.some(option => !option.disabled)) return;
+      let next = activeIndex();
+      do {
+        next = (next + direction + options.length) % options.length;
+      } while (options[next]?.disabled);
+      setActiveIndex(next);
       scrollActiveIntoView();
       return;
     }
@@ -399,15 +417,11 @@ export function Select(props: SelectProps) {
         target={() => rootRef}
         matchTargetWidth
         minWidth={props.dropdownMinWidth}
-        ref={element => {
-          dropdownRef = element;
-          if (!element) return;
-          window.requestAnimationFrame(() => {
-            if (!open() || !element.isConnected) return;
-            // Opening on a selected option further down the list should show it.
-            scrollActiveIntoView();
-            if (props.searchable) element.querySelector<HTMLInputElement>("input")?.focus();
-          });
+        ref={element => (dropdownRef = element)}
+        onOpen={element => {
+          // Opening on a selected option further down the list should show it.
+          scrollActiveIntoView();
+          if (props.searchable) element.querySelector<HTMLInputElement>("input")?.focus();
         }}
         class="bx-Dropdown bx-Combobox-dropdown"
         onClick={event => event.stopPropagation()}
@@ -459,6 +473,8 @@ export function Select(props: SelectProps) {
                       aria-selected={selected()}
                       aria-disabled={option.disabled}
                       onMouseEnter={() => setActiveIndex(index())}
+                      // Keeps focus in the field or the search while picking with the mouse.
+                      onMouseDown={event => event.preventDefault()}
                       onClick={() => pick(option)}
                     >
                       <ComboboxOptionContent option={option} render={props.renderOption} />

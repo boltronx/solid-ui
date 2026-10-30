@@ -6,7 +6,8 @@ import {
   getOwner,
   onCleanup,
   runWithOwner,
-  Show
+  Show,
+  untrack
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -28,6 +29,11 @@ export interface FloatingPanelProps {
   viewportPadding?: number;
   exitDuration?: number;
   ref?: (element: HTMLDivElement | undefined) => void;
+  /**
+   * Called once per opening, when the panel has been placed and shown. Move focus into it here:
+   * until then it is hidden, and browsers don't focus hidden elements.
+   */
+  onOpen?: (element: HTMLDivElement) => void;
   onClick?: (event: MouseEvent) => void;
 }
 
@@ -202,26 +208,31 @@ export function FloatingPanel(props: FloatingPanelProps) {
     });
   };
 
+  // Mounts on open; on close, unmounts after the exit transition. `positioned` is cleared once the
+  // panel is gone, not when it opens: reopened during its exit transition, the panel stays placed,
+  // so the transition just turns back instead of the panel vanishing for a frame.
   createEffect(() => {
     if (props.open) {
       if (closeTimer !== undefined) window.clearTimeout(closeTimer);
       closeTimer = undefined;
-      setPositioned(false);
       setMounted(true);
       queueMicrotask(schedulePositionUpdate);
       return;
     }
 
     if (!mounted()) return;
+    const unmount = () => {
+      setMounted(false);
+      setPositioned(false);
+      props.ref?.(undefined);
+    };
     const exitDuration = props.exitDuration ?? 0;
     if (exitDuration === 0) {
-      setMounted(false);
-      props.ref?.(undefined);
+      unmount();
       return;
     }
     closeTimer = window.setTimeout(() => {
-      setMounted(false);
-      props.ref?.(undefined);
+      unmount();
       closeTimer = undefined;
     }, exitDuration);
   });
@@ -247,6 +258,19 @@ export function FloatingPanel(props: FloatingPanelProps) {
     });
   });
 
+  // Runs after the update that removed `visibility: hidden`, so the panel can take focus.
+  let announcedOpen = false;
+  createEffect(() => {
+    if (!props.open) {
+      announcedOpen = false;
+      return;
+    }
+    if (!positioned() || announcedOpen || !panelRef) return;
+    announcedOpen = true;
+    const panel = panelRef;
+    untrack(() => props.onOpen?.(panel));
+  });
+
   onCleanup(() => {
     if (closeTimer !== undefined) window.clearTimeout(closeTimer);
     if (rafId !== undefined) window.cancelAnimationFrame(rafId);
@@ -263,7 +287,9 @@ export function FloatingPanel(props: FloatingPanelProps) {
             queueMicrotask(schedulePositionUpdate);
           }}
           class={cx("bx-FloatingPanel", props.class)}
-          data-open={props.open.toString()}
+          // Open only once placed: the panel is first laid out unseen, in its closed styles, so a
+          // stylesheet's opening transition (fade, slide) runs from there instead of being skipped.
+          data-open={String(props.open && positioned())}
           data-position={coords().position}
           style={{
             top: `${coords().top}px`,

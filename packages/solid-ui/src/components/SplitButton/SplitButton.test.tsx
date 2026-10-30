@@ -60,3 +60,27 @@ describe("SplitButton", () => {
     expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("type", "button");
   });
 });
+
+describe("SplitButton with its menu open", () => {
+  it("closes the menu when the main half is clicked, and still runs the main action", async () => {
+    const onClick = vi.fn();
+    const onPageClick = vi.fn();
+    render(() => (
+      <div onClick={onPageClick}>
+        <SplitButton onClick={onClick} dropdown={<MenuItem>Save as draft</MenuItem>}>
+          Save
+        </SplitButton>
+      </div>
+    ));
+    const toggle = screen.getByRole("button", { name: "More options" });
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    onPageClick.mockClear();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    // The click isn't swallowed on its way up.
+    expect(onPageClick).toHaveBeenCalledOnce();
+  });
+});

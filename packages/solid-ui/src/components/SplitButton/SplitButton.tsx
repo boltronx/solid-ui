@@ -24,13 +24,11 @@ export interface SplitButtonProps extends BaseProps {
 }
 
 export function SplitButton(props: SplitButtonProps) {
+  // The menu opens from its own half only: Menu toggles on clicks on its trigger, the arrow half,
+  // and treats a click here like any other outside it, closing an open menu.
   const handlePrimaryClick = (event: MouseEvent) => {
-    // The menu opens from its own half only.
-    event.stopPropagation();
     if (props.disabled || props.loading) return;
     props.onClick?.(event);
-    const menuRoot = (event.currentTarget as HTMLElement).closest<HTMLElement>(".bx-Menu");
-    if (menuRoot?.hasAttribute("data-open")) menuRoot.click();
   };
 
   return (

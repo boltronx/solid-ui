@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, onCleanup, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { Button, Card, Code, Group, Stack, Text, Title } from "@boltronx/solid-ui";
@@ -10,6 +10,9 @@ export function Demo(props: { demo: DemoData }) {
   const [showCode, setShowCode] = createSignal(false);
   const [copyState, setCopyState] = createSignal<"idle" | "copied" | "failed">("idle");
 
+  let resetTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(resetTimer));
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(props.demo.source);
@@ -19,7 +22,9 @@ export function Demo(props: { demo: DemoData }) {
       // leaving the button looking like it worked.
       setCopyState("failed");
     }
-    setTimeout(() => setCopyState("idle"), 1500);
+    // Restarted by each copy, so a second click keeps its "Copied" for the full time.
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => setCopyState("idle"), 1500);
   };
 
   return (

@@ -51,6 +51,15 @@ describe("mergeStyle", () => {
     }
   });
 
+  it("drops property names that would add declarations of their own", () => {
+    for (const key of ["color: red; background", "color}body{display", "--x;y", "a b"]) {
+      expect(mergeStyle({ [key]: "none" } as never, { gap: "1px" })).toBe("gap: 1px");
+    }
+    expect(mergeStyle({ WebkitLineClamp: "2", "--bx-gap": "1px" } as never, {})).toBe(
+      "-webkit-line-clamp: 2; --bx-gap: 1px"
+    );
+  });
+
   it("keeps values whose semicolons sit inside brackets or quotes", () => {
     const image = 'url("data:image/svg+xml;utf8,<svg/>")';
     expect(mergeStyle({ "background-image": image }, {})).toBe(`background-image: ${image}`);

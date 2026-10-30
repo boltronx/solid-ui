@@ -125,3 +125,31 @@ describe("DatePicker", () => {
     expect(screen.getByLabelText("Due date")).toHaveValue("");
   });
 });
+
+describe("DatePicker opening", () => {
+  it("opens on today when its value isn't a real date", async () => {
+    renderInForm(() => <DatePicker label="Due date" value="2026-02-30" />);
+    await openCalendar();
+    const today = new Date();
+    const name = new Intl.DateTimeFormat("en-US", { dateStyle: "full" }).format(today);
+    expect(await screen.findByRole("button", { name })).toHaveAttribute("data-today");
+  });
+
+  it("marks today as of the opening, not as of the first render", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 9, 5, 23, 59));
+      renderInForm(() => <DatePicker label="Due date" />);
+      vi.setSystemTime(new Date(2026, 9, 6, 0, 1));
+      await openCalendar();
+      expect(
+        await screen.findByRole("button", { name: "Tuesday, October 6, 2026" })
+      ).toHaveAttribute("data-today");
+      expect(screen.getByRole("button", { name: "Monday, October 5, 2026" })).not.toHaveAttribute(
+        "data-today"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

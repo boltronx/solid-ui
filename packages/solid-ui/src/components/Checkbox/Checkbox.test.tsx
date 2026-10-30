@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { screen } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -96,5 +96,25 @@ describe("Checkbox options", () => {
       "data-label-position",
       "left"
     );
+  });
+});
+
+describe("Checkbox row clicks", () => {
+  it("toggles from its description, but not from a link inside it", async () => {
+    render(() => (
+      <Checkbox
+        label="Accept"
+        description={
+          <>
+            You agree to the <a href="#terms">terms</a>.
+          </>
+        }
+      />
+    ));
+    const box = screen.getByRole("checkbox", { name: "Accept" });
+    await userEvent.click(screen.getByRole("link", { name: "terms" }));
+    expect(box).not.toBeChecked();
+    await userEvent.click(screen.getByText(/You agree/));
+    expect(box).toBeChecked();
   });
 });

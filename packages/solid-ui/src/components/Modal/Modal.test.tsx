@@ -146,3 +146,31 @@ describe("modal", () => {
     }
   });
 });
+
+describe("modal close button", () => {
+  it("reports a rejected onBeforeClose instead of leaving it unhandled, and stays open", async () => {
+    const reportError = vi.fn();
+    vi.stubGlobal("reportError", reportError);
+    let saved = false;
+    try {
+      const error = new Error("Save first");
+      void modal.open({
+        onBeforeClose: () => (saved ? true : Promise.reject(error)),
+        content: ctx => (
+          <Modal>
+            <Modal.Header title="Editing" {...ctx} />
+          </Modal>
+        )
+      });
+      await screen.findByRole("dialog", { name: "Editing" });
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() => expect(reportError).toHaveBeenCalledWith(error));
+      expect(screen.getByRole("dialog", { name: "Editing" })).toBeInTheDocument();
+    } finally {
+      saved = true;
+      modal.closeAll();
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      vi.unstubAllGlobals();
+    }
+  });
+});

@@ -31,3 +31,18 @@
   white-space: nowrap;
   border: 0;
 }
+
+/*
+  Windows High Contrast and other forced-colors modes drop box-shadow, which draws every focus
+  ring, so an outline stands in for it there. The same goes for the option the arrow keys have
+  highlighted while focus stays in the field.
+*/
+@media (forced-colors: active) {
+  :is([class^="bx-"], [class*=" bx-"]):focus-visible,
+  .bx-Switch-input:focus-visible + .bx-Switch-track,
+  .bx-Combobox-option[data-active],
+  .bx-DatePicker-cell[data-active] {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+}
