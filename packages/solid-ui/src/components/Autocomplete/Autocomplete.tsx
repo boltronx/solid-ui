@@ -163,7 +163,7 @@ export function Autocomplete(props: AutocompleteProps) {
   };
 
   const submitOption = (option: SelectOption) => {
-    if (option.disabled) return;
+    if (option.disabled || disabled() || isReadOnly()) return;
     setText(option.label);
     // No search for a picked suggestion, and none for the text typed before it either.
     serverSearch.drop();
