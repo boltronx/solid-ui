@@ -31,6 +31,23 @@ export function Forms() {
           submits the plain number even while it shows grouped digits.
         </Text>
       </Section>
+      <Section title="Submitting">
+        <Text>
+          Give the submit button <Code>loading</Code> while the form sends, e.g. from your own
+          signal in <Code>onSubmit</Code>, as the demo below does, or from{" "}
+          <Code>useSubmission(action).pending</Code> in a Solid Router or SolidStart form action.
+          While it loads, the form cannot be sent again: clicks, Enter and Space on the button do
+          nothing, and neither does Enter in a field: not in a lone field, which Enter would
+          otherwise submit on its own, nor in a <Code>Textarea</Code> with{" "}
+          <Code>submitOnEnter</Code>.
+        </Text>
+        <Text>
+          The button stays enabled, only marked <Code>aria-disabled</Code> and{" "}
+          <Code>aria-busy</Code>, because a disabled button loses focus: a keyboard user who pressed
+          it would be dropped at the top of the page. It keeps its size, with a spinner in place of
+          its left section, so the layout stays put.
+        </Text>
+      </Section>
       <For each={demosFor("forms")}>{demo => <Demo demo={demo} />}</For>
     </Page>
   );

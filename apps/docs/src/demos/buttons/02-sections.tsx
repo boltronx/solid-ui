@@ -1,6 +1,7 @@
 export const meta = {
   title: "Icons and loading",
-  description: "loading keeps the button's size and blocks clicks."
+  description:
+    "loading keeps the button's size and focus, and blocks clicks. For a submit button, see Forms: it also stops Enter from sending the form again."
 };
 
 import { createSignal } from "solid-js";

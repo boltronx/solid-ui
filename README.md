@@ -110,6 +110,35 @@ Composite inputs submit like native ones. `Select` adds one entry per picked val
 (`formData.getAll("tags")`), and `InputNumber` submits the plain number (`1234.5`) even while it
 shows `1,234.50`.
 
+While a form sends, give its submit button `loading`, e.g. from `useSubmission` with a Solid Router
+or SolidStart action:
+
+```tsx
+import { action, useSubmission } from "@solidjs/router";
+import { Button, Input } from "@boltronx/solid-ui";
+
+const subscribe = action(async (formData: FormData) => {
+  "use server";
+  // save formData.get("email")
+}, "subscribe");
+
+export function SubscribeForm() {
+  const submission = useSubmission(subscribe);
+  return (
+    <form action={subscribe} method="post">
+      <Input label="Email" name="email" type="email" required />
+      <Button type="submit" variant="primary" loading={submission.pending}>
+        Subscribe
+      </Button>
+    </form>
+  );
+}
+```
+
+Without an action, set a signal in `onSubmit` and pass it to `loading` the same way. The form then
+can't be sent twice: clicks, Enter and Space on the button do nothing, and neither does Enter in a
+field. The button keeps keyboard focus (it is `aria-disabled`, not `disabled`) and its size.
+
 ## Theming
 
 Override any token from your own CSS. Colors take `light-dark(light, dark)`:
