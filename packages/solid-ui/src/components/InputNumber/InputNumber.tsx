@@ -207,7 +207,14 @@ export function InputNumber(props: InputNumberProps) {
     () => local.onInput,
     () => local.onInputDebounceMs ?? 400
   );
-  onFormReset(() => input, state.reset);
+  onFormReset(
+    () => input,
+    () => {
+      state.reset();
+      const value = round(state.value());
+      setRawText(value === null ? "" : String(value));
+    }
+  );
 
   const displayValue = () =>
     focused() ? rawText() : formatNumber(round(state.value()), decimalConfig());
